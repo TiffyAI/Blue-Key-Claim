@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TiffyAI Claim Portal</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+  <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+  <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      background: linear-gradient(135deg, #000000, #010a2a);
+      position: relative;
+      flex-direction: column;
+      text-align: center;
+    }
+
+    #claimButton {
+      z-index: 10;
+      font-size: 28px;
+      font-weight: bold;
+      padding: 20px 50px;
+      background: linear-gradient(90deg, #FFD700, #C0C0C0, #FFD700);
+      color: #000;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 0 20px #ffd70099;
+      animation: shimmer 3s infinite linear;
+    }
+
+    @keyframes shimmer {
+      0%, 100% { box-shadow: 0 0 10px #FFD700; }
+      50% { box-shadow: 0 0 30px #FFFACD; }
+    }
+
+    #cooldownTimer {
+      margin-top: 20px;
+      font-size: 20px;
+      color: #ffcc00;
+      text-shadow: 0 0 5px #00ffff99;
+    }
+
+    #keyCount {
+      margin-top: 15px;
+      font-size: 18px;
+      color: #00ffff;
+      text-shadow: 0 0 10px #00ffff;
+    }
+
+    #keyImage {
+      margin-top: 10px;
+      width: 80px;
+      animation: pulse 2s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+
+  <button id="claimButton" onclick="connectWalletAndClaim()">CLAIM</button>
+  <div id="cooldownTimer">Loading cooldown...</div>
+  <div id="keyCount">Checking your keys...</div>
+  <img id="keyImage" src="Keys.png" alt="Blue Key" style="display:none;" />
+
+  <script>
+    const contractAddress = "0x6df97Ec32401e23dEDB2E6cAF3035155890DC237";
+    const claimABI = [
+      { "inputs": [], "name": "claim", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+      { "inputs": [{ "internalType": "address", "name": "", "type": "address" }], "name": "lastClaimed", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view" }
+    ];
+
+    const providerOptions = {
+      walletconnect: {
+        package: window.WalletConnectProvider.default,
+        options: {
+          rpc: { 97: "https://data-seed-prebsc-1-s1.binance.org:8545/" },
+          chainId: 97
+        }
+      }
+    };
+
+    const web3Modal = new window.Web3Modal.default({ cacheProvider: false, providerOptions });
+
+    let web3, provider, user, contract;
+
+    async function updateCooldown() {
+      if (!contract || !user) {
+        document.getElementById("cooldownTimer").innerText = "Connect wallet to check cooldown.";
+        return;
+      }
+
+      try {
+        const lastClaimed = await contract.methods.lastClaimed(user).call();
+        const nextClaim = parseInt(lastClaimed) + 86400;
+        const now = Math.floor(Date.now() / 1000);
+        const remaining = nextClaim - now;
+
+        const timer = document.getElementById("cooldownTimer");
+
+        if (remaining <= 0) {
+          timer.innerText = "Claim Available Now!";
+        } else {
+          const h = Math.floor(remaining / 3600);
+          const m = Math.floor((remaining % 3600) / 60);
+          const s = remaining % 60;
+          timer.innerText = `Next claim in: ${h}h ${m}m ${s}s`;
+        }
+      } catch (e) {
+        document.getElementById("cooldownTimer").innerText = "Error loading cooldown.";
+      }
+    }
+
+    async function connectWalletAndClaim() {
+      try {
+        provider = await web3Modal.connect();
+        web3 = new Web3(provider);
+        const networkId = await web3.eth.net.getId();
+        if (networkId !== 97) return alert("Switch to BNB Testnet");
+
+        const accounts = await web3.eth.getAccounts();
+        user = accounts[0];
+        contract = new web3.eth.Contract(claimABI, contractAddress);
+
+        await contract.methods.claim().send({ from: user });
+        alert("1 TiffyAI token claimed successfully!");
+        addKey();
+        updateCooldown();
+      } catch (err) {
+        alert("Claim failed: " + (err.message || "Check wallet and network."));
+      }
+    }
+
+    function addKey() {
+      let keys = parseInt(localStorage.getItem("tiffyBlueKeys") || "0");
+      if (isNaN(keys) || keys < 0) keys = 0;
+      keys++;
+      localStorage.setItem("tiffyBlueKeys", keys);
+
+      if (keys >= 10) {
+        setTimeout(() => {
+          window.location.href = "https://tiffyai.github.io/treasure/";
+        }, 2000);
+      }
+
+      updateKeyDisplay();
+    }
+
+    function updateKeyDisplay() {
+      let keys = parseInt(localStorage.getItem("tiffyBlueKeys") || "0");
+      if (isNaN(keys) || keys < 0) keys = 0;
+      localStorage.setItem("tiffyBlueKeys", keys);
+
+      const counter = document.getElementById("keyCount");
+      const image = document.getElementById("keyImage");
+
+      counter.innerText = `You've claimed ${keys}/10 Blue Keys`;
+      image.style.display = "block";
+    }
+
+    setInterval(updateCooldown, 1000);
+    updateKeyDisplay();
+  </script>
+</body>
+</html>
