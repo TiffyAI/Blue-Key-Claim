@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TiffyAI Claim Portal</title>
+  <title>TIFFYAI Claim Portal</title>
   <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
   <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
   <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
@@ -20,7 +20,6 @@
       background: linear-gradient(135deg, #000000, #010a2a);
       position: relative;
       flex-direction: column;
-      text-align: center;
     }
 
     #claimButton {
@@ -34,7 +33,19 @@
       border-radius: 50px;
       cursor: pointer;
       box-shadow: 0 0 20px #ffd70099;
-      animation: shimmer 3s infinite linear;
+      animation: slideIn 2s ease-out, shimmer 3s infinite linear;
+    }
+
+    #cooldownTimer {
+      margin-top: 20px;
+      font-size: 20px;
+      color: #ccc;
+      text-shadow: 0 0 5px #00ffff99;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateY(100px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
     }
 
     @keyframes shimmer {
@@ -42,41 +53,53 @@
       50% { box-shadow: 0 0 30px #FFFACD; }
     }
 
-    #cooldownTimer {
-      margin-top: 20px;
-      font-size: 20px;
-      color: #ffcc00;
-      text-shadow: 0 0 5px #00ffff99;
+    .particle {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: radial-gradient(circle, #ffd700, transparent);
+      border-radius: 50%;
+      animation: float 15s linear infinite;
     }
 
-    #keyCount {
-      margin-top: 15px;
-      font-size: 18px;
-      color: #00ffff;
-      text-shadow: 0 0 10px #00ffff;
+    @keyframes float {
+      from { transform: translateY(100vh) scale(0.5); opacity: 0; }
+      to   { transform: translateY(-10vh) scale(1.5); opacity: 1; }
     }
 
-    #keyImage {
-      margin-top: 10px;
-      width: 80px;
-      animation: pulse 2s infinite ease-in-out;
+    #keysEffect {
+      position: absolute;
+      width: 100px;
+      opacity: 0;
+      z-index: 1;
+      animation: growFadeOut 2.8s ease-out forwards;
     }
 
-    @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.15); }
-      100% { transform: scale(1); }
+    @keyframes growFadeOut {
+      0%   { transform: scale(1); opacity: 0; }
+      30%  { transform: scale(2); opacity: 0.7; }
+      60%  { transform: scale(5); opacity: 0.9; }
+      100% { transform: scale(10); opacity: 0; }
     }
   </style>
 </head>
-<body>
 
-  <button id="claimButton" onclick="connectWalletAndClaim()">CLAIM</button>
-  <div id="cooldownTimer">Loading cooldown...</div>
-  <div id="keyCount">Checking your keys...</div>
-  <img id="keyImage" src="Keys.png" alt="Blue Key" style="display:none;" />
+<body>
+  <img id="keysEffect" src="Keys.png" alt="Keys Animation" />
+  <button id="claimButton">CLAIM</button>
+  <div id="cooldownTimer"></div>
 
   <script>
+    for (let i = 0; i < 35; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = Math.random() * 100 + 'vw';
+      p.style.animationDelay = (Math.random() * 10) + 's';
+      p.style.opacity = Math.random();
+      p.style.width = p.style.height = (Math.random() * 8 + 2) + 'px';
+      document.body.appendChild(p);
+    }
+
     const contractAddress = "0x6df97Ec32401e23dEDB2E6cAF3035155890DC237";
     const claimABI = [
       { "inputs": [], "name": "claim", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
@@ -98,29 +121,24 @@
     let web3, provider, user, contract;
 
     async function updateCooldown() {
-      if (!contract || !user) {
-        document.getElementById("cooldownTimer").innerText = "Connect wallet to check cooldown.";
-        return;
-      }
-
+      if (!contract || !user) return;
       try {
         const lastClaimed = await contract.methods.lastClaimed(user).call();
         const nextClaim = parseInt(lastClaimed) + 86400;
         const now = Math.floor(Date.now() / 1000);
         const remaining = nextClaim - now;
 
-        const timer = document.getElementById("cooldownTimer");
-
         if (remaining <= 0) {
-          timer.innerText = "Claim Available Now!";
+          document.getElementById("cooldownTimer").innerText = "Claim Available Now!";
         } else {
-          const h = Math.floor(remaining / 3600);
-          const m = Math.floor((remaining % 3600) / 60);
-          const s = remaining % 60;
-          timer.innerText = `Next claim in: ${h}h ${m}m ${s}s`;
+          const hours = Math.floor(remaining / 3600);
+          const mins = Math.floor((remaining % 3600) / 60);
+          const secs = remaining % 60;
+          document.getElementById("cooldownTimer").innerText =
+            `Next claim in: ${hours}h ${mins}m ${secs}s`;
         }
       } catch (e) {
-        document.getElementById("cooldownTimer").innerText = "Error loading cooldown.";
+        console.warn("Cooldown error:", e);
       }
     }
 
@@ -129,50 +147,32 @@
         provider = await web3Modal.connect();
         web3 = new Web3(provider);
         const networkId = await web3.eth.net.getId();
-        if (networkId !== 97) return alert("Switch to BNB Testnet");
+        if (networkId !== 97) return alert("Switch to BSC Testnet");
 
         const accounts = await web3.eth.getAccounts();
         user = accounts[0];
+
         contract = new web3.eth.Contract(claimABI, contractAddress);
 
         await contract.methods.claim().send({ from: user });
-        alert("1 TiffyAI token claimed successfully!");
-        addKey();
+        alert("Claim successful! 1 TIFFYAI sent.");
+        triggerKeysEffect();
         updateCooldown();
       } catch (err) {
         alert("Claim failed: " + (err.message || "Check wallet and network."));
       }
     }
 
-    function addKey() {
-      let keys = parseInt(localStorage.getItem("tiffyBlueKeys") || "0");
-      if (isNaN(keys) || keys < 0) keys = 0;
-      keys++;
-      localStorage.setItem("tiffyBlueKeys", keys);
-
-      if (keys >= 10) {
-        setTimeout(() => {
-          window.location.href = "https://tiffyai.github.io/treasure/";
-        }, 2000);
-      }
-
-      updateKeyDisplay();
+    function triggerKeysEffect() {
+      const keys = document.getElementById("keysEffect");
+      keys.style.animation = "none"; // reset
+      void keys.offsetWidth; // force reflow
+      keys.style.animation = "growFadeOut 2.8s ease-out forwards";
     }
 
-    function updateKeyDisplay() {
-      let keys = parseInt(localStorage.getItem("tiffyBlueKeys") || "0");
-      if (isNaN(keys) || keys < 0) keys = 0;
-      localStorage.setItem("tiffyBlueKeys", keys);
-
-      const counter = document.getElementById("keyCount");
-      const image = document.getElementById("keyImage");
-
-      counter.innerText = `You've claimed ${keys}/10 Blue Keys`;
-      image.style.display = "block";
-    }
+    document.getElementById("claimButton").onclick = connectWalletAndClaim;
 
     setInterval(updateCooldown, 1000);
-    updateKeyDisplay();
   </script>
 </body>
 </html>
