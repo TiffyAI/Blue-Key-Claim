@@ -13,18 +13,18 @@
       height: 100vh;
       overflow: hidden;
       font-family: 'Segoe UI', sans-serif;
-      color: white;
-      background: url('TiffyAI -Treasury.jpg') no-repeat center center fixed;
-      background-size: cover;
+      background: url('TiffyAI-Treasury.jpg') no-repeat center center fixed;
+      background-size: 180%; /* zoomed in */
       display: flex;
       justify-content: center;
-      align-items: flex-end; /* lower the container */
-      padding-bottom: 80px; /* adjust for logo visibility */
+      align-items: flex-end;
+      padding-bottom: 60px;
+      color: white;
     }
 
     .glass-container {
       background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 20px;
       padding: 40px 30px;
       backdrop-filter: blur(12px);
@@ -33,10 +33,12 @@
       text-align: center;
       max-width: 600px;
       width: 90%;
+      position: relative;
+      z-index: 2;
     }
 
     #claimButton {
-      font-size: 28px;
+      font-size: 26px;
       font-weight: bold;
       padding: 20px 50px;
       background: linear-gradient(90deg, #FFD700, #C0C0C0, #FFD700);
@@ -49,17 +51,14 @@
       margin-top: 30px;
     }
 
-    #cooldownTimer {
+    #cooldownTimer, #blueKeyCounter {
+      margin-top: 20px;
       font-size: 22px;
-      color: #00ffff;
-      text-shadow: 0 0 6px #00ffff, 0 0 12px #0088ff;
-      margin-top: 15px;
+      font-weight: bold;
+      text-shadow: 0 0 5px #0ff, 0 0 15px #0ff;
     }
 
     #blueKeyCounter {
-      margin-top: 15px;
-      font-size: 22px;
-      font-weight: bold;
       background: linear-gradient(90deg, #00ffff, #ff00ff, #00ffff);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -73,9 +72,13 @@
 
     #keysEffect {
       position: absolute;
+      top: 45%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       width: 100px;
       opacity: 0;
       z-index: 1;
+      pointer-events: none;
       animation: growFadeOut 2.8s ease-out forwards;
     }
 
@@ -90,10 +93,10 @@
     }
 
     @keyframes growFadeOut {
-      0%   { transform: scale(1); opacity: 0; }
-      30%  { transform: scale(2); opacity: 0.7; }
-      60%  { transform: scale(5); opacity: 0.9; }
-      100% { transform: scale(10); opacity: 0; }
+      0%   { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+      30%  { transform: translate(-50%, -50%) scale(2); opacity: 0.7; }
+      60%  { transform: translate(-50%, -50%) scale(5); opacity: 0.9; }
+      100% { transform: translate(-50%, -50%) scale(10); opacity: 0; }
     }
 
     #modalOverlay, #successOverlay {
@@ -128,14 +131,14 @@
     }
 
     @media screen and (max-width: 600px) {
+      .glass-container {
+        padding: 30px 20px;
+      }
       #claimButton {
-        font-size: 24px;
-        padding: 15px 40px;
+        font-size: 22px;
+        padding: 15px 35px;
       }
-      #blueKeyCounter {
-        font-size: 20px;
-      }
-      #cooldownTimer {
+      #cooldownTimer, #blueKeyCounter {
         font-size: 20px;
       }
     }
@@ -153,7 +156,6 @@
     <div class="modalBox">
       <h2 style="color: gold;">Happy Days! Congratulations!</h2>
       <p>You’ve collected 10 Blue Keys and Unlocked a Special Treasure Chest!</p>
-      <p>Visit your reward now.</p>
       <button onclick="redirectToTreasure()">OK</button>
     </div>
   </div>
