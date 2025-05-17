@@ -8,33 +8,19 @@
   <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
   <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
   <style>
-    html, body {
+    body {
       margin: 0;
-      padding: 0;
       height: 100vh;
-      background: url('TiffyAI -Treasury.jpg') no-repeat center center fixed;
-      background-size: cover;
-      font-family: 'Segoe UI', sans-serif;
       overflow: hidden;
-    }
-
-    .glass-container {
-      position: absolute;
-      bottom: 0;
-      width: 100%;
-      max-width: 100%;
-      padding: 40px 20px;
-      background: rgba(0, 0, 0, 0.55);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border-top-left-radius: 30px;
-      border-top-right-radius: 30px;
-      box-shadow: 0 0 40px rgba(0,255,255,0.3);
       display: flex;
-      flex-direction: column;
       align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      background: linear-gradient(135deg, #000000, #010a2a);
+      position: relative;
+      flex-direction: column;
     }
-
     #claimButton {
       z-index: 10;
       font-size: 28px;
@@ -49,54 +35,19 @@
       animation: slideIn 2s ease-out, shimmer 3s infinite linear;
       margin-top: 20px;
     }
-
     #cooldownTimer {
-      font-size: 20px;
+      font-size: 22px;
       color: #FFD700;
       text-shadow: 0 0 10px #FFD700;
-      margin-top: 10px;
-      text-align: center;
+      margin-top: 15px;
     }
-
     #blueKeyCounter {
       margin-top: 15px;
-      font-size: 22px;
+      font-size: 20px;
       font-weight: bold;
       color: #00ffff;
-      text-shadow: 0 0 5px #00ffff, 0 0 15px #00aaff;
-      text-align: center;
-      max-width: 90%;
+      text-shadow: 0 0 5px #00ffff, 0 0 10px #00aaff;
     }
-
-    #keysEffect {
-      position: absolute;
-      width: 100px;
-      opacity: 0;
-      z-index: 1;
-      animation: growFadeOut 2.8s ease-out forwards;
-      left: 50%;
-      top: 40%;
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-    }
-
-    @keyframes slideIn {
-      from { transform: translateY(100px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
-    }
-
-    @keyframes shimmer {
-      0%, 100% { box-shadow: 0 0 10px #FFD700; }
-      50% { box-shadow: 0 0 30px #FFFACD; }
-    }
-
-    @keyframes growFadeOut {
-      0%   { transform: scale(1); opacity: 0; }
-      30%  { transform: scale(2); opacity: 0.7; }
-      60%  { transform: scale(5); opacity: 0.9; }
-      100% { transform: scale(10); opacity: 0; }
-    }
-
     #modalOverlay, #successOverlay {
       display: none;
       position: fixed;
@@ -107,7 +58,6 @@
       justify-content: center;
       align-items: center;
     }
-
     .modalBox {
       background: #111;
       padding: 30px;
@@ -116,7 +66,6 @@
       text-align: center;
       box-shadow: 0 0 20px #9055ff;
     }
-
     .modalBox button {
       margin-top: 20px;
       background: linear-gradient(90deg, #4af0f8, #9055ff);
@@ -127,22 +76,39 @@
       cursor: pointer;
       font-weight: bold;
     }
+    #keysEffect {
+      position: absolute;
+      width: 100px;
+      opacity: 0;
+      z-index: 1;
+      animation: growFadeOut 2.8s ease-out forwards;
+    }
+    @keyframes slideIn {
+      from { transform: translateY(100px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    @keyframes shimmer {
+      0%, 100% { box-shadow: 0 0 10px #FFD700; }
+      50% { box-shadow: 0 0 30px #FFFACD; }
+    }
+    @keyframes growFadeOut {
+      0%   { transform: scale(1); opacity: 0; }
+      30%  { transform: scale(2); opacity: 0.7; }
+      60%  { transform: scale(5); opacity: 0.9; }
+      100% { transform: scale(10); opacity: 0; }
+    }
   </style>
 </head>
 <body>
-
-  <img id="keysEffect" src="Keys.png" alt="Keys Animation" />
-
-  <div class="glass-container">
-    <button id="claimButton">CLAIM</button>
-    <div id="cooldownTimer"></div>
-    <div id="blueKeyCounter"></div>
-  </div>
+  <img id="keysEffect" src="https://tiffyai.github.io/On-boarding-/Keys.png" alt="Keys Animation" />
+  <button id="claimButton">CLAIM</button>
+  <div id="cooldownTimer"></div>
+  <div id="blueKeyCounter"></div>
 
   <div id="modalOverlay">
     <div class="modalBox">
-      <h2 style="color: gold;">Happy Days! Congratulations!</h2>
-      <p>You’ve collected 10 Blue Keys and Unlocked a Special Treasure Chest!</p>
+      <h2 style="color: gold;">Congratulations!</h2>
+      <p>You’ve collected 10 Blue Keys and Unlocked a Treasure Chest!</p>
       <p>Visit your reward now.</p>
       <button onclick="redirectToTreasure()">OK</button>
     </div>
@@ -150,7 +116,7 @@
 
   <div id="successOverlay">
     <div class="modalBox">
-      <h2 style="color: #4af0f8;">1 TIFFYAI Token Claimed!</h2>
+      <h2 style="color: #4af0f8;">1 Key & 1 TIFFYAI Token Claimed!</h2>
       <p>You're on your way to the Lucky Wheel, Treasure Rewards and Mainnet Eligibility!</p>
       <button onclick="redirectToUsers()">OK</button>
     </div>
@@ -259,6 +225,9 @@
 
     function redirectToTreasure() {
       window.location.href = "https://tiffyai.github.io/treasure/";
+      setTimeout(() => {
+        window.location.href = "https://tiffyai.github.io/TiffyAI-Users/";
+      }, 4000);
     }
 
     function redirectToUsers() {
