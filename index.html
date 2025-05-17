@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TiffyAI Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: 'Orbitron', sans-serif;
+      background: black;
+    }
+
+    #intro-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      overflow: hidden;
+      background: black;
+    }
+
+    #background-token {
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      position: absolute;
+      z-index: 1;
+      filter: blur(4px) brightness(1.1);
+    }
+
+    #zooming-keys {
+      position: absolute;
+      width: 80px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.1);
+      z-index: 3;
+      animation: zoomKeys 6s ease-in forwards;
+    }
+
+    @keyframes zoomKeys {
+      0% { transform: translate(-50%, -50%) scale(0.1); opacity: 1; }
+      80% { transform: translate(-50%, -50%) scale(12); opacity: 0.9; }
+      100% { transform: translate(-50%, -50%) scale(30); opacity: 0; }
+    }
+
+    #mystical-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      flex-direction: column;
+      text-align: center;
+    }
+
+    #typing-text {
+      max-width: 90%;
+      font-size: 1.4rem;
+      color: #00f0ff;
+      text-shadow: 0 0 10px #00f0ff, 0 0 20px #0033cc;
+      line-height: 1.8;
+      white-space: pre-wrap;
+      animation: fadeOutText 2s ease-in 12s forwards;
+    }
+
+    @keyframes fadeOutText {
+      to { opacity: 0; transform: translateY(-30px); }
+    }
+
+    #runes-canvas {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+      opacity: 0.3;
+      mix-blend-mode: screen;
+    }
+  </style>
+</head>
+<body>
+  <div id="intro-screen">
+    <img src="Token.png" id="background-token" />
+    <img src="Keys.png" id="zooming-keys" />
+    <div id="mystical-overlay">
+      <div id="typing-text"></div>
+      <canvas id="runes-canvas"></canvas>
+    </div>
+    <audio id="intro-audio" src="mystic-hum.mp3" autoplay loop></audio>
+  </div>
+
+  <script>
+    // Typing neon message
+    const lines = [
+      "Collect 10 Blue Keys and Unlock the Special Treasure, Share and Be Rewarded!",
+      "Try Get Your Gold Key for Mainnet Daily.",
+      "The More Gold Keys You Hold the Bigger Your Rewards Become.",
+      "The More Exciting Levels You Unlock!",
+      "Start Unlocking Your Wealth!"
+    ];
+
+    const typingText = document.getElementById("typing-text");
+    let fullText = lines.join("\n");
+    let i = 0;
+
+    function typeLine() {
+      if (i <= fullText.length) {
+        typingText.innerText = fullText.slice(0, i++);
+        setTimeout(typeLine, 40);
+      }
+    }
+
+    typeLine();
+
+    // Fade out the intro screen after the animation
+    setTimeout(() => {
+      document.getElementById("intro-screen").style.opacity = "0";
+      setTimeout(() => {
+        document.getElementById("intro-screen").style.display = "none";
+      }, 2000);
+    }, 14000);
+
+    // Glowing rune particle canvas
+    const canvas = document.getElementById("runes-canvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const runes = [];
+
+    for (let i = 0; i < 50; i++) {
+      runes.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 1.5 + 0.5,
+        speed: Math.random() * 0.5 + 0.2,
+        opacity: Math.random() * 0.5 + 0.2
+      });
+    }
+
+    function drawRunes() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let r of runes) {
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, r.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(0, 255, 255, ${r.opacity})`;
+        ctx.fill();
+        r.y -= r.speed;
+        if (r.y < 0) r.y = canvas.height;
+      }
+      requestAnimationFrame(drawRunes);
+    }
+
+    drawRunes();
+  </script>
+</body>
+</html>
