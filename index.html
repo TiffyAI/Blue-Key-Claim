@@ -14,20 +14,21 @@
       overflow: hidden;
       font-family: 'Segoe UI', sans-serif;
       color: white;
-      background: url('TiffyAI -Treasury.jpg') no-repeat center center fixed;
+      background: url('TiffyAI-Treasury.jpg') no-repeat center center fixed;
       background-size: cover;
       display: flex;
       justify-content: center;
-      align-items: center;
+      align-items: flex-end; /* lower the container */
+      padding-bottom: 80px; /* adjust for logo visibility */
     }
 
     .glass-container {
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 20px;
-      padding: 40px;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      padding: 40px 30px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
       text-align: center;
       max-width: 600px;
@@ -45,22 +46,54 @@
       cursor: pointer;
       box-shadow: 0 0 20px #ffd70099;
       animation: slideIn 2s ease-out, shimmer 3s infinite linear;
-      margin-top: 20px;
+      margin-top: 30px;
     }
 
     #cooldownTimer {
       font-size: 22px;
-      color: #FFD700;
-      text-shadow: 0 0 10px #FFD700;
+      color: #00ffff;
+      text-shadow: 0 0 6px #00ffff, 0 0 12px #0088ff;
       margin-top: 15px;
     }
 
     #blueKeyCounter {
       margin-top: 15px;
-      font-size: 20px;
+      font-size: 22px;
       font-weight: bold;
-      color: #00ffff;
-      text-shadow: 0 0 5px #00ffff, 0 0 10px #00aaff;
+      background: linear-gradient(90deg, #00ffff, #ff00ff, #00ffff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: glowText 3s infinite ease-in-out;
+    }
+
+    @keyframes glowText {
+      0%, 100% { text-shadow: 0 0 10px #00ffff; }
+      50% { text-shadow: 0 0 20px #ff00ff; }
+    }
+
+    #keysEffect {
+      position: absolute;
+      width: 100px;
+      opacity: 0;
+      z-index: 1;
+      animation: growFadeOut 2.8s ease-out forwards;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateY(100px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @keyframes shimmer {
+      0%, 100% { box-shadow: 0 0 10px #FFD700; }
+      50% { box-shadow: 0 0 30px #FFFACD; }
+    }
+
+    @keyframes growFadeOut {
+      0%   { transform: scale(1); opacity: 0; }
+      30%  { transform: scale(2); opacity: 0.7; }
+      60%  { transform: scale(5); opacity: 0.9; }
+      100% { transform: scale(10); opacity: 0; }
     }
 
     #modalOverlay, #successOverlay {
@@ -94,29 +127,17 @@
       font-weight: bold;
     }
 
-    #keysEffect {
-      position: absolute;
-      width: 100px;
-      opacity: 0;
-      z-index: 1;
-      animation: growFadeOut 2.8s ease-out forwards;
-    }
-
-    @keyframes slideIn {
-      from { transform: translateY(100px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
-    }
-
-    @keyframes shimmer {
-      0%, 100% { box-shadow: 0 0 10px #FFD700; }
-      50% { box-shadow: 0 0 30px #FFFACD; }
-    }
-
-    @keyframes growFadeOut {
-      0%   { transform: scale(1); opacity: 0; }
-      30%  { transform: scale(2); opacity: 0.7; }
-      60%  { transform: scale(5); opacity: 0.9; }
-      100% { transform: scale(10); opacity: 0; }
+    @media screen and (max-width: 600px) {
+      #claimButton {
+        font-size: 24px;
+        padding: 15px 40px;
+      }
+      #blueKeyCounter {
+        font-size: 20px;
+      }
+      #cooldownTimer {
+        font-size: 20px;
+      }
     }
   </style>
 </head>
