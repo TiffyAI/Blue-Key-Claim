@@ -20,27 +20,17 @@
       background: url('TiffyAI -Treasury.jpg') no-repeat center center/cover;
       position: relative;
     }
-    #keysEffect {
-      position: absolute;
-      top: 30%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 100px;
-      opacity: 0;
-      z-index: 999;
-      animation: growFadeOut 2.8s ease-out forwards;
-    }
     .glass-container {
       position: absolute;
+      right: 0;
       top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 100vw;
-      max-width: none;
-      background: rgba(255, 255, 255, 0.03);
+      transform: translateY(-50%);
+      width: 80%;
+      max-width: 700px;
+      background: rgba(255, 255, 255, 0.08);
       border-radius: 20px;
       box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
-      backdrop-filter: blur(8px);
+      backdrop-filter: blur(15px);
       padding: 40px;
       text-align: center;
       z-index: 2;
@@ -69,17 +59,27 @@
       50% { transform: scale(0.95); }
       100% { transform: scale(1); }
     }
-    @keyframes growFadeOut {
-      0%   { transform: translate(-50%, -50%) scale(1); opacity: 0; }
-      30%  { transform: translate(-50%, -50%) scale(2); opacity: 0.7; }
-      60%  { transform: translate(-50%, -50%) scale(5); opacity: 0.9; }
-      100% { transform: translate(-50%, -50%) scale(10); opacity: 0; }
-    }
     #cooldownTimer, #blueKeyCounter {
       margin-top: 20px;
       font-size: 18px;
       color: cyan;
       text-shadow: 0 0 10px cyan;
+    }
+    #keysEffect {
+      position: absolute;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100px;
+      opacity: 0;
+      z-index: 1;
+      animation: growFadeOut 2.8s ease-out forwards;
+    }
+    @keyframes growFadeOut {
+      0%   { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+      30%  { transform: translate(-50%, -50%) scale(2); opacity: 0.7; }
+      60%  { transform: translate(-50%, -50%) scale(5); opacity: 0.9; }
+      100% { transform: translate(-50%, -50%) scale(10); opacity: 0; }
     }
     #modalOverlay, #successOverlay {
       display: none;
@@ -114,7 +114,7 @@
 <body>
   <img id="keysEffect" src="https://tiffyai.github.io/On-boarding-/Keys.png" alt="Keys Animation" />
   <div class="glass-container">
-    <button id="claimButton" onclick="connectWalletAndClaim()"></button>
+    <button id="claimButton"></button>
     <div id="cooldownTimer"></div>
     <div id="blueKeyCounter"></div>
   </div>
@@ -180,14 +180,11 @@
           localStorage.setItem('tiffyBlueKeys', keys);
           updateKeyCounter(keys);
 
-          setTimeout(() => {
-            if (keys >= 10) {
-              window.location.href = "/treasure";
-            } else {
-              window.location.href = "/TiffyAI-Users/";
-            }
-          }, 3000);
-
+          if (keys >= 10) {
+            setTimeout(() => window.location.href = "/treasure", 3000);
+          } else {
+            setTimeout(() => window.location.href = "/TiffyAI-Users/", 3000);
+          }
         } else {
           alert("Claim cooldown still active. Redirecting you to engage with TiffyAI.");
           window.location.href = "/TiffyAI-Users/";
@@ -249,10 +246,9 @@
       window.location.href = "/TiffyAI-Users/";
     }
 
-    window.onload = () => {
-      setInterval(updateCooldown, 1000);
-      updateKeyCounter();
-    };
+    document.getElementById("claimButton").onclick = connectWalletAndClaim;
+    setInterval(updateCooldown, 1000);
+    updateKeyCounter();
   </script>
 </body>
 </html>
