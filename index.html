@@ -10,69 +10,77 @@
   <style>
     body {
       margin: 0;
+      padding: 0;
       height: 100vh;
-      overflow: hidden;
+      background: url('https://tiffyai.github.io/Blue-Key-Claim/TiffyAI%20-Treasury.jpg') no-repeat center center;
+      background-size: cover;
       font-family: 'Segoe UI', sans-serif;
       color: white;
-      background: url("TiffyAI%20-Treasury.jpg") no-repeat center center/cover;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      position: relative;
+      overflow: hidden;
     }
-
-    .glass {
+    .glass-container {
       position: absolute;
       bottom: 0;
-      width: 100%;
-      max-width: 1000px;
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(10px);
-      border-top: 2px solid rgba(255, 255, 255, 0.1);
-      border-left: 2px solid rgba(255, 255, 255, 0.1);
-      padding: 40px 20px 60px;
+      left: 0;
+      right: 0;
+      margin: auto;
+      width: 90%;
+      max-width: 900px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 30px 20px;
+      backdrop-filter: blur(12px);
       text-align: center;
-      border-radius: 20px 20px 0 0;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
     }
 
     #claimButton {
-      z-index: 10;
-      font-size: 22px;
-      font-weight: bold;
-      padding: 25px 25px;
-      background: url("https://tiffyai.github.io/On-boarding-/TiffyAI-Token.png") no-repeat center center/cover;
-      color: white;
-      border: none;
+      width: 150px;
+      height: 150px;
       border-radius: 50%;
-      width: 120px;
-      height: 120px;
+      background-image: url('https://tiffyai.github.io/Blue-Key-Claim/TiffyAI-Token.png');
+      background-size: cover;
+      background-position: center;
+      font-size: 20px;
+      font-weight: bold;
+      color: white;
+      text-shadow: 0 0 5px black;
+      border: none;
       cursor: pointer;
-      box-shadow: 0 0 20px #ffd70099;
-      position: relative;
-    }
-
-    #claimButton span {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 18px;
-      text-shadow: 0 0 5px #000;
+      box-shadow: 0 0 20px #FFD700;
+      margin-top: 20px;
     }
 
     #cooldownTimer {
-      font-size: 16px;
+      font-size: 18px;
       color: #FFD700;
       text-shadow: 0 0 10px #FFD700;
       margin-top: 15px;
     }
-
     #blueKeyCounter {
-      margin-top: 10px;
-      font-size: 16px;
+      margin-top: 15px;
+      font-size: 20px;
       font-weight: bold;
       color: #00ffff;
       text-shadow: 0 0 5px #00ffff, 0 0 10px #00aaff;
+    }
+
+    #keysEffect {
+      position: absolute;
+      width: 100px;
+      opacity: 0;
+      z-index: 1;
+      animation: growFadeOut 2.8s ease-out forwards;
+      left: 50%;
+      top: 40%;
+      transform: translate(-50%, -50%);
+    }
+
+    @keyframes growFadeOut {
+      0%   { transform: scale(1); opacity: 0; }
+      30%  { transform: scale(2); opacity: 0.7; }
+      60%  { transform: scale(5); opacity: 0.9; }
+      100% { transform: scale(10); opacity: 0; }
     }
 
     #modalOverlay, #successOverlay {
@@ -105,27 +113,12 @@
       cursor: pointer;
       font-weight: bold;
     }
-
-    #keysEffect {
-      position: absolute;
-      width: 100px;
-      opacity: 0;
-      z-index: 1;
-      animation: growFadeOut 2.8s ease-out forwards;
-    }
-
-    @keyframes growFadeOut {
-      0%   { transform: scale(1); opacity: 0; }
-      30%  { transform: scale(2); opacity: 0.7; }
-      60%  { transform: scale(5); opacity: 0.9; }
-      100% { transform: scale(10); opacity: 0; }
-    }
   </style>
 </head>
 <body>
   <img id="keysEffect" src="https://tiffyai.github.io/On-boarding-/Keys.png" alt="Keys Animation" />
-  <div class="glass">
-    <button id="claimButton"><span>CLAIM</span></button>
+  <div class="glass-container">
+    <button id="claimButton">CLAIM</button>
     <div id="cooldownTimer"></div>
     <div id="blueKeyCounter"></div>
   </div>
@@ -154,21 +147,6 @@
       { "inputs": [{ "internalType": "address", "name": "", "type": "address" }], "name": "lastClaimed", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view" }
     ];
 
-    function isMobile() {
-      return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    }
-
-    function openInMetaMaskBrowser() {
-      if (typeof window.ethereum === 'undefined') {
-        const link = isMobile()
-          ? 'https://metamask.app.link/dapp/tiffyai.github.io/treasure/'
-          : 'https://metamask.io/download/';
-        window.open(link, '_blank');
-        return true;
-      }
-      return false;
-    }
-
     const providerOptions = {
       walletconnect: {
         package: window.WalletConnectProvider.default,
@@ -183,8 +161,6 @@
     let web3, provider, user, contract;
 
     async function connectWalletAndClaim() {
-      if (openInMetaMaskBrowser()) return;
-
       try {
         provider = await web3Modal.connect();
         web3 = new Web3(provider);
@@ -194,19 +170,16 @@
         const accounts = await web3.eth.getAccounts();
         user = accounts[0];
         contract = new web3.eth.Contract(claimABI, contractAddress);
+
         await contract.methods.claim().send({ from: user });
 
         triggerKeysEffect();
+        showClaimSuccess();
+
         let keys = parseInt(localStorage.getItem('tiffyBlueKeys') || '0') + 1;
         localStorage.setItem('tiffyBlueKeys', keys);
         updateKeyCounter(keys);
         updateCooldown();
-
-        if (keys >= 10) {
-          document.getElementById("modalOverlay").style.display = "flex";
-        } else {
-          document.getElementById("successOverlay").style.display = "flex";
-        }
       } catch (err) {
         alert("Claim failed: " + (err.message || "Check wallet and network."));
       }
@@ -219,9 +192,16 @@
       keys.style.animation = "growFadeOut 2.8s ease-out forwards";
     }
 
+    function showClaimSuccess() {
+      document.getElementById("successOverlay").style.display = "flex";
+    }
+
     function updateKeyCounter(keys = null) {
       const count = keys !== null ? keys : parseInt(localStorage.getItem('tiffyBlueKeys') || '0');
       document.getElementById("blueKeyCounter").innerText = `You've claimed ${count}/10 Blue Keys to Unlock Your Special Treasure Chest`;
+      if (count >= 10) {
+        document.getElementById("modalOverlay").style.display = "flex";
+      }
     }
 
     async function updateCooldown() {
@@ -251,7 +231,12 @@
     }
 
     function redirectToUsers() {
-      window.location.href = "https://tiffyai.github.io/TiffyAI-Users/";
+      const keys = parseInt(localStorage.getItem('tiffyBlueKeys') || '0');
+      if (keys >= 10) {
+        document.getElementById("modalOverlay").style.display = "flex";
+      } else {
+        window.location.href = "https://tiffyai.github.io/TiffyAI-Users/";
+      }
     }
 
     document.getElementById("claimButton").onclick = connectWalletAndClaim;
