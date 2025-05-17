@@ -22,24 +22,24 @@
     }
     #keysEffect {
       position: absolute;
-      top: 50%;
+      top: 30%;
       left: 50%;
       transform: translate(-50%, -50%);
       width: 100px;
       opacity: 0;
-      z-index: 1001;
+      z-index: 999;
       animation: growFadeOut 2.8s ease-out forwards;
     }
     .glass-container {
       position: absolute;
-      right: 10px;
       top: 50%;
-      transform: translateY(-50%);
-      width: calc(100% - 20px);
-      max-width: 800px;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100vw;
+      max-width: none;
       background: rgba(255, 255, 255, 0.03);
       border-radius: 20px;
-      box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
       backdrop-filter: blur(8px);
       padding: 40px;
       text-align: center;
@@ -87,7 +87,7 @@
       top: 0; left: 0;
       width: 100%; height: 100%;
       background-color: rgba(0,0,0,0.8);
-      z-index: 1002;
+      z-index: 100;
       justify-content: center;
       align-items: center;
     }
@@ -114,7 +114,7 @@
 <body>
   <img id="keysEffect" src="https://tiffyai.github.io/On-boarding-/Keys.png" alt="Keys Animation" />
   <div class="glass-container">
-    <button id="claimButton"></button>
+    <button id="claimButton" onclick="connectWalletAndClaim()"></button>
     <div id="cooldownTimer"></div>
     <div id="blueKeyCounter"></div>
   </div>
@@ -249,9 +249,10 @@
       window.location.href = "/TiffyAI-Users/";
     }
 
-    document.getElementById("claimButton").onclick = connectWalletAndClaim;
-    setInterval(updateCooldown, 1000);
-    updateKeyCounter();
+    window.onload = () => {
+      setInterval(updateCooldown, 1000);
+      updateKeyCounter();
+    };
   </script>
 </body>
 </html>
