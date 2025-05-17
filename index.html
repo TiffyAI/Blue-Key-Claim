@@ -10,34 +10,36 @@
   <style>
     body {
       margin: 0;
-      height: 100vh;
-      overflow: hidden;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
+      padding: 0;
+      background: url("TiffyAI -Treasury.jpg") no-repeat center center fixed;
+      background-size: cover;
       font-family: 'Segoe UI', sans-serif;
       color: white;
-      background: url('TiffyAI -Treasury.jpg') no-repeat center center/cover;
-      position: relative;
+      overflow: hidden;
     }
 
-    .glass {
-      background: rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-radius: 20px;
-      padding: 30px 20px;
-      width: 100%;
+    .glass-container {
+      position: absolute;
+      top: 55%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 95%;
       max-width: 800px;
-      margin-bottom: 40px;
-      text-align: center;
-      box-shadow: 0 0 20px rgba(255,255,255,0.2);
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 30px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 10;
     }
 
     #claimButton {
-      font-size: 26px;
+      font-size: 28px;
       font-weight: bold;
-      padding: 18px 40px;
+      padding: 20px 50px;
       background: linear-gradient(90deg, #FFD700, #C0C0C0, #FFD700);
       color: #000;
       border: none;
@@ -48,19 +50,44 @@
       margin-top: 20px;
     }
 
+    @keyframes shimmer {
+      0%, 100% { box-shadow: 0 0 10px #FFD700; }
+      50% { box-shadow: 0 0 30px #FFFACD; }
+    }
+
     #cooldownTimer {
       font-size: 20px;
       color: #FFD700;
       text-shadow: 0 0 10px #FFD700;
       margin-top: 15px;
+      text-align: center;
     }
 
     #blueKeyCounter {
       margin-top: 15px;
-      font-size: 22px;
+      font-size: 18px;
       font-weight: bold;
       color: #00ffff;
-      text-shadow: 0 0 8px #00ffff, 0 0 12px #00aaff;
+      text-shadow: 0 0 5px #00ffff, 0 0 10px #00aaff;
+      text-align: center;
+    }
+
+    #keysEffect {
+      position: absolute;
+      width: 100px;
+      opacity: 0;
+      z-index: 1;
+      top: 60%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      animation: growFadeOut 2.8s ease-out forwards;
+    }
+
+    @keyframes growFadeOut {
+      0%   { transform: scale(1); opacity: 0; }
+      30%  { transform: scale(2); opacity: 0.7; }
+      60%  { transform: scale(5); opacity: 0.9; }
+      100% { transform: scale(10); opacity: 0; }
     }
 
     #modalOverlay, #successOverlay {
@@ -94,36 +121,27 @@
       font-weight: bold;
     }
 
-    #keysEffect {
-      position: absolute;
-      width: 100px;
-      opacity: 0;
-      z-index: 1;
-      animation: growFadeOut 2.8s ease-out forwards;
-    }
-
-    @keyframes shimmer {
-      0%, 100% { box-shadow: 0 0 10px #FFD700; }
-      50% { box-shadow: 0 0 30px #FFFACD; }
-    }
-
-    @keyframes growFadeOut {
-      0%   { transform: scale(1); opacity: 0; }
-      30%  { transform: scale(2); opacity: 0.7; }
-      60%  { transform: scale(5); opacity: 0.9; }
-      100% { transform: scale(10); opacity: 0; }
-    }
-
     @media (max-width: 600px) {
-      #claimButton { font-size: 22px; padding: 15px 30px; }
-      #blueKeyCounter { font-size: 18px; }
-      #cooldownTimer { font-size: 18px; }
+      .glass-container {
+        width: 95%;
+        padding: 20px;
+      }
+
+      #claimButton {
+        font-size: 22px;
+        padding: 15px 30px;
+      }
+
+      #cooldownTimer, #blueKeyCounter {
+        font-size: 16px;
+      }
     }
   </style>
 </head>
 <body>
   <img id="keysEffect" src="https://tiffyai.github.io/On-boarding-/Keys.png" alt="Keys Animation" />
-  <div class="glass">
+
+  <div class="glass-container">
     <button id="claimButton">CLAIM</button>
     <div id="cooldownTimer"></div>
     <div id="blueKeyCounter"></div>
@@ -133,7 +151,6 @@
     <div class="modalBox">
       <h2 style="color: gold;">Happy Days! Congratulations!</h2>
       <p>You’ve collected 10 Blue Keys and Unlocked a Special Treasure Chest!</p>
-      <p>Visit your reward now.</p>
       <button onclick="redirectToTreasure()">OK</button>
     </div>
   </div>
@@ -153,21 +170,6 @@
       { "inputs": [{ "internalType": "address", "name": "", "type": "address" }], "name": "lastClaimed", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view" }
     ];
 
-    function isMobile() {
-      return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    }
-
-    function openInMetaMaskBrowser() {
-      if (typeof window.ethereum === 'undefined') {
-        const link = isMobile()
-          ? 'https://metamask.app.link/dapp/tiffyai.github.io/treasure/'
-          : 'https://metamask.io/download/';
-        window.open(link, '_blank');
-        return true;
-      }
-      return false;
-    }
-
     const providerOptions = {
       walletconnect: {
         package: window.WalletConnectProvider.default,
@@ -181,9 +183,9 @@
     const web3Modal = new window.Web3Modal.default({ cacheProvider: false, providerOptions });
     let web3, provider, user, contract;
 
-    async function connectWalletAndClaim() {
-      if (openInMetaMaskBrowser()) return;
+    document.getElementById("claimButton").addEventListener("click", connectWalletAndClaim);
 
+    async function connectWalletAndClaim() {
       try {
         provider = await web3Modal.connect();
         web3 = new Web3(provider);
@@ -197,6 +199,7 @@
 
         triggerKeysEffect();
         showClaimSuccess();
+
         let keys = parseInt(localStorage.getItem('tiffyBlueKeys') || '0') + 1;
         localStorage.setItem('tiffyBlueKeys', keys);
         updateKeyCounter(keys);
@@ -215,6 +218,17 @@
 
     function showClaimSuccess() {
       document.getElementById("successOverlay").style.display = "flex";
+    }
+
+    function redirectToTreasure() {
+      window.location.href = "https://tiffyai.github.io/treasure/";
+      setTimeout(() => {
+        window.location.href = "https://tiffyai.github.io/TiffyAI-Users/";
+      }, 4000);
+    }
+
+    function redirectToUsers() {
+      window.location.href = "https://tiffyai.github.io/TiffyAI-Users/";
     }
 
     function updateKeyCounter(keys = null) {
@@ -247,18 +261,6 @@
       }
     }
 
-    function redirectToTreasure() {
-      window.location.href = "https://tiffyai.github.io/treasure/";
-      setTimeout(() => {
-        window.location.href = "https://tiffyai.github.io/TiffyAI-Users/";
-      }, 4000);
-    }
-
-    function redirectToUsers() {
-      window.location.href = "https://tiffyai.github.io/TiffyAI-Users/";
-    }
-
-    document.getElementById("claimButton").onclick = connectWalletAndClaim;
     setInterval(updateCooldown, 1000);
     updateKeyCounter();
   </script>
