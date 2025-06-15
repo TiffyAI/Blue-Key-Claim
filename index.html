@@ -8,24 +8,107 @@
   <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
   <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
   <style>
-    /* (All your CSS from the last version here) */
+    body {
+      margin: 0;
+      height: 100vh;
+      background: url('TiffyAI%20-Treasury.jpg') center center / cover no-repeat;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .glass {
+      background: rgba(0,0,0,0.6);
+      padding: 2rem;
+      border-radius: 20px;
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 0 30px #00ffff;
+    }
+    #claimButton {
+      background: url('TiffyAI-Token.png') no-repeat center center / cover;
+      width: 120px;
+      height: 120px;
+      border: none;
+      border-radius: 50%;
+      box-shadow: 0 0 20px lime;
+      cursor: pointer;
+      margin-top: 20px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    #cooldownTimer, #blueKeyCounter {
+      margin-top: 20px;
+      font-size: 18px;
+      color: cyan;
+      text-shadow: 0 0 10px cyan;
+    }
+    .modalOverlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    .modalBox {
+      background: #111;
+      padding: 30px;
+      border-radius: 15px;
+      border: 2px solid #00ffff;
+      text-align: center;
+      box-shadow: 0 0 20px #00ffff;
+    }
+    .modalBox button {
+      margin-top: 20px;
+      background: linear-gradient(to right, #4af0f8, #9055ff);
+      border: none;
+      padding: 10px 30px;
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
-  <!-- Your loading screen, main portal, overlays from last version -->
+  <div class="glass">
+    <h2>🔹 Claim Daily TIFFY</h2>
+    <button id="claimButton" title="Claim"></button>
+    <div id="cooldownTimer">Checking status...</div>
+    <div id="blueKeyCounter"></div>
+  </div>
+
+  <div id="successOverlay" class="modalOverlay">
+    <div class="modalBox">
+      <h2>🎉 Claimed 1 TIFFY!</h2>
+      <p>You also earned 1 Blue Key!</p>
+      <button onclick="redirectToUsers()">Continue</button>
+    </div>
+  </div>
+
+  <div id="modalOverlay" class="modalOverlay">
+    <div class="modalBox">
+      <h2 style="color: gold;">🎁 Treasure Unlocked!</h2>
+      <p>You’ve collected 10 Blue Keys. Opening Treasure...</p>
+      <button onclick="redirectToTreasure()">Open</button>
+    </div>
+  </div>
 
   <script>
-    // Typing screen logic omitted for brevity
-
     const contractAddress = "0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5";
     const claimABI = [
       { "inputs": [], "name": "claim", "outputs": [], "stateMutability": "payable", "type": "function" },
-      { "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
-        "name": "lastClaimed", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-        "stateMutability": "view", "type": "function" },
-      { "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
-        "name": "isFeeExempt", "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
-        "stateMutability": "view", "type": "function" }
+      { "inputs": [{"internalType":"address","name":"","type":"address"}], "name":"lastClaimed", "outputs":[{"internalType":"uint256","name":"","type":"uint256"}], "stateMutability":"view", "type":"function" },
+      { "inputs": [{"internalType":"address","name":"","type":"address"}], "name":"isFeeExempt", "outputs":[{"internalType":"bool","name":"","type":"bool"}], "stateMutability":"view", "type":"function" }
     ];
 
     const web3Modal = new window.Web3Modal.default({
@@ -33,62 +116,91 @@
       providerOptions: {
         walletconnect: {
           package: window.WalletConnectProvider.default,
-          options: { rpc: {56: "https://bsc-dataseed.binance.org/"}, chainId:56 }
+          options: {
+            rpc: { 56: "https://bsc-dataseed.binance.org/" },
+            chainId: 56
+          }
         }
       }
     });
 
-    let web3, provider, user, contract;
+    let web3, provider, contract, user;
 
     async function connectWalletAndClaim() {
       try {
         provider = await web3Modal.connect();
         web3 = new Web3(provider);
+
         const networkId = await web3.eth.net.getId();
-        if (networkId !== 56) {
-          alert("⚠️ Please switch to BSC Mainnet.");
-          return;
-        }
+        if (networkId !== 56) return alert("Please switch to BNB Smart Chain Mainnet.");
 
         const accounts = await web3.eth.getAccounts();
         user = accounts[0];
         contract = new web3.eth.Contract(claimABI, contractAddress);
 
-        const isExempt = await contract.methods.isFeeExempt(user).call();
         const last = await contract.methods.lastClaimed(user).call();
-        const now = Math.floor(Date.now()/1000);
+        const now = Math.floor(Date.now() / 1000);
 
         if (now < parseInt(last) + 86400) {
-          alert("🕒 Cooldown active. You can claim again tomorrow.");
+          alert("🕒 Cooldown: You already claimed today.");
           window.location.href = "/TiffyAI-Users/";
           return;
         }
 
-        const txParams = isExempt ? { from: user } : {
+        const isExempt = await contract.methods.isFeeExempt(user).call();
+        const txOptions = isExempt ? { from: user } : {
           from: user,
           value: web3.utils.toWei("0.0015", "ether")
         };
 
-        await contract.methods.claim().send(txParams);
-        triggerKeysEffect();
-        showClaimSuccess();
-
-        let keys = (parseInt(localStorage.getItem('tiffyBlueKeys')) || 0) + 1;
-        localStorage.setItem('tiffyBlueKeys', keys);
+        await contract.methods.claim().send(txOptions);
+        const keys = (parseInt(localStorage.getItem("tiffyBlueKeys")) || 0) + 1;
+        localStorage.setItem("tiffyBlueKeys", keys);
         updateKeyCounter(keys);
 
-        setTimeout(() => {
-          if (keys >= 10) window.location.href = "/treasure";
-          else window.location.href = "/TiffyAI-Users/";
-        }, 4000);
+        if (keys >= 10) {
+          document.getElementById("modalOverlay").style.display = "flex";
+        } else {
+          document.getElementById("successOverlay").style.display = "flex";
+        }
 
       } catch (err) {
+        alert("❌ Claim failed: " + (err.message || "Try again."));
         console.error(err);
-        alert("❌ Claim failed: " + (err.message || "Check network/gas."));
       }
     }
 
-    // Animation and UI helper functions omitted for brevity
+    function updateKeyCounter(keys = null) {
+      const current = keys !== null ? keys : parseInt(localStorage.getItem("tiffyBlueKeys") || '0');
+      document.getElementById("blueKeyCounter").innerText = `🔹 You have ${current}/10 Blue Keys`;
+    }
+
+    async function updateCooldown() {
+      if (!contract || !user) return;
+      const last = await contract.methods.lastClaimed(user).call();
+      const next = parseInt(last) + 86400;
+      const now = Math.floor(Date.now() / 1000);
+      const remaining = next - now;
+      const timer = document.getElementById("cooldownTimer");
+
+      if (remaining <= 0) {
+        timer.innerText = "✅ Claim Available";
+      } else {
+        const h = Math.floor(remaining / 3600);
+        const m = Math.floor((remaining % 3600) / 60);
+        const s = remaining % 60;
+        timer.innerText = `Next claim in: ${h}h ${m}m ${s}s`;
+      }
+    }
+
+    function redirectToUsers() {
+      window.location.href = "/TiffyAI-Users/";
+    }
+
+    function redirectToTreasure() {
+      localStorage.setItem("tiffyBlueKeys", "0");
+      window.location.href = "/treasure";
+    }
 
     document.getElementById("claimButton").onclick = connectWalletAndClaim;
     setInterval(updateCooldown, 1000);
