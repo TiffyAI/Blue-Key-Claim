@@ -11,12 +11,90 @@
   <script defer src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
 
   <style>
-    /* (Same styles as you had - no change) */
+    body {
+      background: linear-gradient(to right, #0f0c29, #302b63, #24243e);
+      color: white;
+      font-family: 'Orbitron', sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    #loadingScreen, #mainPortal {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      flex-direction: column;
+    }
+
+    #mainPortal {
+      display: none;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    #claimButton.cooldown {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 18px;
+      border: none;
+      border-radius: 12px;
+      background-color: #00ccff;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #typingText {
+      max-width: 90%;
+      text-align: center;
+      font-size: 18px;
+      margin-bottom: 20px;
+    }
+
+    #cooldownTimer, #blueKeyCounter {
+      font-size: 16px;
+    }
+
+    #modalOverlay, #successOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      color: white;
+      font-size: 24px;
+    }
   </style>
 </head>
 <body>
-  <!-- UI (Same as before, no changes needed) -->
 
+  <!-- 🔄 Loading Screen -->
+  <div id="loadingScreen">
+    <div id="typingText"></div>
+  </div>
+
+  <!-- 🌌 Main Portal -->
+  <div id="mainPortal">
+    <button id="claimButton">🔹 Claim Daily Blue Key</button>
+    <div id="cooldownTimer">⏳ Checking eligibility...</div>
+    <div id="blueKeyCounter">🔹 You have 0/10 Blue Keys</div>
+  </div>
+
+  <!-- 🎉 Overlays -->
+  <div id="modalOverlay">🎉 You got 10 Blue Keys! Gold Key unlocked!</div>
+  <div id="successOverlay">✅ Claim successful!</div>
+
+  <!-- 🔊 Optional Audio -->
+  <audio id="mysticAudio" src="assets/mine.mp4" preload="auto"></audio>
+
+  <!-- 💡 Claim Logic Script -->
   <script>
     const contractAddress = "0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5";
     const claimABI = [
