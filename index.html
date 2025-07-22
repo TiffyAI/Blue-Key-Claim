@@ -3,132 +3,160 @@
 <head>
   <meta charset="UTF-8" />
   <title>TiffyAI Claim Portal</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
   <style>
-    body, html {
+    body {
       margin: 0;
       padding: 0;
-      overflow: hidden;
       font-family: 'Orbitron', sans-serif;
-      background: black;
-    }
-
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap');
-
-    #bgVideo {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw;
-      height: 100vh;
-      object-fit: cover;
-      z-index: -2;
-    }
-
-    .overlay {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.4);
-      z-index: -1;
-    }
-
-    .container {
-      position: relative;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
+      background: url('TiffyAI-Treasury.jpg') no-repeat center center fixed;
+      background-size: cover;
       color: #00f7ff;
-      text-shadow: 0 0 10px #00f7ff, 0 0 20px #00f7ff;
     }
-
-    .glow-button {
-      margin-top: 20px;
-      padding: 12px 24px;
-      font-size: 1.2rem;
+    .glass {
+      backdrop-filter: blur(15px);
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 500px;
+      margin: 80px auto;
+      text-align: center;
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+    }
+    h1 {
+      font-size: 2em;
+      margin-bottom: 20px;
+      text-shadow: 0 0 5px cyan;
+    }
+    #connectBtn, #claimBtn {
+      font-size: 1.2em;
+      padding: 10px 20px;
+      margin: 10px;
+      border: none;
+      border-radius: 15px;
+      cursor: pointer;
       background: #00f7ff;
       color: #000;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      box-shadow: 0 0 20px #00f7ff;
-      transition: all 0.3s ease-in-out;
+      box-shadow: 0 0 15px #00f7ff;
+      transition: transform 0.2s;
     }
-
-    .glow-button:hover {
+    #connectBtn:hover, #claimBtn:hover {
       transform: scale(1.1);
-      box-shadow: 0 0 30px #00f7ff;
     }
-
-    #keysImage {
-      width: 100px;
-      animation: zoomOut 3s ease-out forwards;
+    #cooldown {
+      margin-top: 10px;
+      font-size: 0.9em;
+      color: #ccc;
     }
-
+    #typedText {
+      height: 24px;
+      margin-bottom: 15px;
+    }
+    #keyImage {
+      width: 80px;
+      margin: 15px auto;
+      animation: none;
+    }
     @keyframes zoomOut {
-      0% { transform: scale(3); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(4); opacity: 0; }
     }
   </style>
 </head>
 <body>
 
-  <!-- 🔊 Mystic Audio -->
-  <audio id="audio" src="mystic-hum.mp3" autoplay loop></audio>
+<div class="glass">
+  <h1>TiffyAI Claim Portal</h1>
+  <div id="typedText"></div>
+  <img id="keyImage" src="Keys.png" style="display:none;" />
+  <button id="connectBtn">Connect Wallet</button>
+  <button id="claimBtn" style="display:none;">Claim Blue Key</button>
+  <div id="cooldown"></div>
+</div>
 
-  <!-- 🎬 Background Video -->
-  <video id="bgVideo" autoplay muted loop playsinline>
-    <source src="TiffyAI-Treasury.mp4" type="video/mp4" />
-    Your browser does not support HTML5 video.
-  </video>
-  <div class="overlay"></div>
+<script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+<script>
+  const connectBtn = document.getElementById('connectBtn');
+  const claimBtn = document.getElementById('claimBtn');
+  const cooldownDisplay = document.getElementById('cooldown');
+  const keyImage = document.getElementById('keyImage');
+  const typedText = document.getElementById('typedText');
 
-  <!-- 💎 UI Content -->
-  <div class="container">
-    <h1>Welcome to TiffyAI</h1>
-    <h2>Claim your <span style="color: gold;">Blue Key</span> & unlock rewards</h2>
-    <img id="keysImage" src="Keys.png" alt="Key" />
-    <button class="glow-button" onclick="connectWallet()">Connect Wallet</button>
-  </div>
+  let accounts;
+  let isCooldown = false;
+  const cooldownSeconds = 30;
 
-  <!-- ✅ LIBRARIES -->
-  <script defer src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
-  <script defer src="lib/web3-provider.js"></script>
-  <script defer src="https://unpkg.com/web3modal@1.9.8/dist/index.js"></script>
-
-  <!-- 🧠 Tiffy Claim Logic -->
-  <script>
-    let web3;
-    let web3Modal;
-    let provider;
-
-    async function init() {
-      const providerOptions = getProviderOptions(); // from web3-provider.js
-      web3Modal = new Web3Modal.default({
-        cacheProvider: false,
-        providerOptions,
-      });
+  const text = "Claim your Blue Key and unlock the TiffyAI Treasury...";
+  let charIndex = 0;
+  function typeWriter() {
+    if (charIndex < text.length) {
+      typedText.textContent += text.charAt(charIndex);
+      charIndex++;
+      setTimeout(typeWriter, 60);
     }
+  }
+  typeWriter();
 
-    async function connectWallet() {
+  connectBtn.onclick = async () => {
+    if (window.ethereum) {
       try {
-        provider = await web3Modal.connect();
-        web3 = new Web3(provider);
-        const accounts = await web3.eth.getAccounts();
-        const address = accounts[0];
-
-        alert("Connected: " + address);
-        // ➕ Add claim contract logic here if needed
+        accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        connectBtn.style.display = 'none';
+        claimBtn.style.display = 'inline-block';
       } catch (err) {
-        console.error("Connection failed", err);
+        alert('Connection failed.');
       }
+    } else {
+      alert('MetaMask not detected.');
+    }
+  };
+
+  function triggerCooldown() {
+    isCooldown = true;
+    let timeLeft = cooldownSeconds;
+    cooldownDisplay.textContent = `Cooldown: ${timeLeft}s`;
+    const interval = setInterval(() => {
+      timeLeft--;
+      cooldownDisplay.textContent = `Cooldown: ${timeLeft}s`;
+      if (timeLeft <= 0) {
+        clearInterval(interval);
+        cooldownDisplay.textContent = '';
+        isCooldown = false;
+      }
+    }, 1000);
+  }
+
+  claimBtn.onclick = async () => {
+    if (isCooldown) return;
+
+    // Show Blue Key animation
+    keyImage.style.display = 'block';
+    keyImage.style.animation = 'zoomOut 1s forwards';
+
+    setTimeout(() => {
+      keyImage.style.display = 'none';
+      keyImage.style.animation = 'none';
+    }, 1000);
+
+    // Update localStorage
+    let blueKeys = parseInt(localStorage.getItem('blueKeys') || '0');
+    blueKeys += 1;
+    localStorage.setItem('blueKeys', blueKeys);
+
+    if (blueKeys >= 10) {
+      let goldKeys = parseInt(localStorage.getItem('goldKeys') || '0');
+      goldKeys += 1;
+      localStorage.setItem('goldKeys', goldKeys);
+      localStorage.setItem('blueKeys', 0);
+      window.location.href = "/treasure";
+    } else {
+      window.location.href = "/TiffyAI-Users/";
     }
 
-    window.addEventListener('DOMContentLoaded', init);
-  </script>
+    triggerCooldown();
+  };
+</script>
 
 </body>
 </html>
