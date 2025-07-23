@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TIFFYAI Claim Portal</title>
+
+  <!-- ? Wallet Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+  <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+  <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      height: 100%; width: 100%;
+      font-family: 'Segoe UI', sans-serif;
+      background: black;
+      color: #0ff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+    .container {
+      text-align: center;
+    }
+    #claimButton {
+      background: limegreen;
+      color: black;
+      padding: 16px 32px;
+      font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 0 10px #0ff;
+    }
+    #status { margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>? TiffyAI Claim Portal</h1>
+    <button id="claimButton">Connect & Claim</button>
+    <div id="status">?? Waiting for action...</div>
+  </div>
+
+<script>
+  const CONTRACT = "0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5";
+  const ABI = [
+    { "inputs": [], "name": "claim", "outputs": [], "stateMutability": "payable", "type": "function" },
+    { "inputs": [{"internalType":"address","name":"","type":"address"}], "name": "lastClaimed", "outputs": [{"internalType":"uint256","name":"","type":"uint256"}], "stateMutability": "view", "type": "function" },
+    { "inputs": [{"internalType":"address","name":"","type":"address"}], "name": "isFeeExempt", "outputs": [{"internalType":"bool","name":"","type":"bool"}], "stateMutability": "view", "type": "function" }
+  ];
+
+  let web3, account, contract;
+
+  async function connectAndClaim() {
+    const status = document.getElementById('status');
+    try {
+      if (window.ethereum && (window.ethereum.isBitget || window.ethereum.isBinance || window.ethereum.isMetaMask)) {
+        status.innerText = "?? Connecting via native provider...";
+        web3 = new Web3(window.ethereum);
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        account = accounts[0];
+      } else {
+        status.innerText = "?? Connecting via Web3Modal...";
+        const providerOptions = {
+          walletconnect: {
+            package: window.WalletConnectProvider.default,
+            options: {
+              rpc: { 56: "https://bsc-dataseed.binance.org/" },
+              chainId: 56
+            }
+          }
+        };
+        const web3Modal = new window.Web3Modal.default({ cacheProvider: false, providerOptions });
+        const provider = await web3Modal.connect();
+        web3 = new Web3(provider);
+        const accounts = await web3.eth.getAccounts();
+        account = accounts[0];
+      }
+
+      contract = new web3.eth.Contract(ABI, CONTRACT);
+
+      const last = await contract.methods.lastClaimed(account).call();
+      const now = Math.floor(Date.now() / 1000);
+      if (now < parseInt(last) + 86400) {
+        status.innerText = "?? Already claimed today.";
+        return;
+      }
+
+      const exempt = await contract.methods.isFeeExempt(account).call();
+      const txOptions = exempt ? { from: account } : {
+        from: account,
+        value: web3.utils.toWei("0.0015", "ether")
+      };
+
+      await contract.methods.claim().send(txOptions);
+      status.innerText = "? Claim successful!";
+    } catch (err) {
+      console.error("Error:", err);
+      status.innerText = "? Error: " + (err.message || "Claim failed");
+    }
+  }
+
+  document.getElementById("claimButton").addEventListener("click", connectAndClaim);
+</script>
+</body>
+</html>
