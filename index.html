@@ -11,13 +11,172 @@
   <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
 
   <style>
-    /* [Unchanged CSS here for layout, animation, styling] */
-    /* ...same as before... */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      font-family: 'Segoe UI', sans-serif;
+      overflow: hidden;
+    }
+    #loadingScreen {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      background: url('Token.png') no-repeat center center/cover;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    #zoomKeys {
+      width: 100px;
+      animation: zoomOut 6s ease-out forwards;
+    }
+    @keyframes zoomOut {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(40); opacity: 0; }
+    }
+    #typingText {
+      margin-top: 40px;
+      font-size: 24px;
+      color: cyan;
+      text-align: center;
+      max-width: 90%;
+      text-shadow: 0 0 10px cyan;
+    }
+    #mainPortal {
+      display: none;
+      width: 100%;
+      height: 100%;
+      background: url('TiffyAI -Treasury.jpg') no-repeat center center/cover;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      color: white;
+    }
+    .glass-container {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 80%;
+      max-width: 700px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+      backdrop-filter: blur(15px);
+      padding: 40px;
+      text-align: center;
+      z-index: 2;
+    }
+    #claimButton {
+      background: url('TiffyAI-Token.png') no-repeat center center/contain;
+      width: 120px;
+      height: 120px;
+      border: none;
+      border-radius: 60px;
+      animation: pulse 2s infinite;
+      box-shadow: 0 0 20px lime;
+      cursor: pointer;
+    }
+    #claimButton.cooldown {
+      animation: pulseCooldown 2s infinite;
+      box-shadow: 0 0 20px red;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    @keyframes pulseCooldown {
+      0% { transform: scale(1); }
+      50% { transform: scale(0.95); }
+      100% { transform: scale(1); }
+    }
+    #cooldownTimer, #blueKeyCounter {
+      margin-top: 20px;
+      font-size: 18px;
+      color: cyan;
+      text-shadow: 0 0 10px cyan;
+    }
+    #keysEffect {
+      position: absolute;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100px;
+      opacity: 0;
+      z-index: 1;
+      animation: growFadeOut 2.8s ease-out forwards;
+    }
+    @keyframes growFadeOut {
+      0%   { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+      30%  { transform: translate(-50%, -50%) scale(2); opacity: 0.7; }
+      60%  { transform: translate(-50%, -50%) scale(5); opacity: 0.9; }
+      100% { transform: translate(-50%, -50%) scale(10); opacity: 0; }
+    }
+    .modalOverlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    .modalBox {
+      background: #111;
+      padding: 30px;
+      border-radius: 15px;
+      border: 2px solid #00ffff;
+      text-align: center;
+      box-shadow: 0 0 20px #00ffff;
+    }
+    .modalBox button {
+      margin-top: 20px;
+      background: linear-gradient(to right, #4af0f8, #9055ff);
+      border: none;
+      padding: 10px 30px;
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
-  <!-- UI and modals (unchanged) -->
-  <!-- ... -->
+  <div id="loadingScreen">
+    <img id="zoomKeys" src="https://tiffyai.github.io/On-boarding-/Keys.png" alt="Zooming Keys" />
+    <div id="typingText"></div>
+    <audio id="mysticAudio" src="mystic-hum.mp3" preload="auto"></audio>
+  </div>
+
+  <div id="mainPortal">
+    <img id="keysEffect" src="https://tiffyai.github.io/On-boarding-/Keys.png" alt="Keys Animation" />
+    <div class="glass-container">
+      <button id="claimButton" title="Claim"></button>
+      <div id="cooldownTimer">Checking claim status...</div>
+      <div id="blueKeyCounter"></div>
+    </div>
+  </div>
+
+  <div id="modalOverlay" class="modalOverlay">
+    <div class="modalBox">
+      <h2 style="color: gold;">🎁 Treasure Unlocked!</h2>
+      <p>You've earned 10 Blue Keys and unlocked your treasure!</p>
+      <button onclick="redirectToTreasure()">Open Treasure</button>
+    </div>
+  </div>
+
+  <div id="successOverlay" class="modalOverlay">
+    <div class="modalBox">
+      <h2 style="color: #4af0f8;">🎉 1 TIFFY Claimed!</h2>
+      <p>You’ve also earned a Blue Key.</p>
+      <button onclick="redirectToUsers()">Continue</button>
+    </div>
+  </div>
 
   <script>
     const contractAddress = "0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5";
@@ -56,7 +215,6 @@
         console.log("🟢 Provider loaded:", provider);
 
         web3 = new Web3(provider);
-
         const accounts = await web3.eth.getAccounts();
         user = accounts[0];
         console.log("✅ Connected wallet address:", user);
