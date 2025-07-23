@@ -225,7 +225,6 @@
         document.getElementById("successOverlay").style.display = "flex";
       }
 
-      document.getElementById("claimButton").disabled = false;
       updateKeyCounter(keys);
     } catch (err) {
       console.error("❌ Error:", err);
@@ -239,13 +238,60 @@
   }
 
   function updateCooldown() {
-    // Keep your existing cooldown logic
+    if (!contract || !user) return;
+    contract.methods.lastClaimed(user).call().then(last => {
+      const next = parseInt(last) + 86400;
+      const now = Math.floor(Date.now() / 1000);
+      const remaining = next - now;
+
+      const timer = document.getElementById("cooldownTimer");
+      const button = document.getElementById("claimButton");
+
+      if (remaining <= 0) {
+        timer.innerText = "✅ Claim Available";
+        button.classList.remove("cooldown");
+      } else {
+        button.classList.add("cooldown");
+        const h = Math.floor(remaining / 3600);
+        const m = Math.floor((remaining % 3600) / 60);
+        const s = remaining % 60;
+        timer.innerText = `⏳ Next Claim: ${h}h ${m}m ${s}s`;
+      }
+    });
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
+  function redirectToTreasure() {
+    window.location.href = "/treasure";
+  }
+
+  function redirectToUsers() {
+    window.location.href = "/TiffyAI-Users/";
+  }
+
+  function typeNextChar() {
+    const fullText = "Collect 10 Blue Keys and Unlock the Special Treasure. Share and Be Rewarded. Get Your Gold Key Daily for Mainnet. The More Keys You Hold, the Bigger Your Rewards!";
+    const typingText = document.getElementById("typingText");
+    let index = 0;
+    function type() {
+      if (index < fullText.length) {
+        typingText.textContent += fullText.charAt(index++);
+        setTimeout(type, 40);
+      } else {
+        setTimeout(() => {
+          document.getElementById("loadingScreen").style.display = "none";
+          document.getElementById("mainPortal").style.display = "flex";
+        }, 1000);
+      }
+    }
+    type();
+  }
+
+  window.addEventListener("load", () => {
+    document.getElementById("mysticAudio").play().catch(() => {});
     document.getElementById("claimButton").addEventListener("click", connectWalletAndClaim);
     updateKeyCounter();
     setInterval(updateCooldown, 1000);
+    typeNextChar(); // ✅ This was missing earlier
   });
 </script>
 </body>
