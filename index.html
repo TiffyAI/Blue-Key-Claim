@@ -1,45 +1,164 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>TiffyAI Claim Portal</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-  <!-- Wallet & Web3 Libraries -->
+  <!-- Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
   <script src="lib/web3-provider.js"></script>
   <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
-  <script defer src="claim.js"></script>
 
   <style>
-    html, body {
-      margin: 0; padding: 0;
-      width: 100%; height: 100%;
-      background: black;
-      color: cyan;
-      font-family: 'Segoe UI', sans-serif;
-      overflow: hidden;
-    }
-    #main { /* blurred backdrop with treasury image */ }
-    .glass { /* styling as before */ }
-    #claimButton { /* styling & pulse */ }
-    #claimButton.cooldown { /* red error state */ }
-    .info, .price { /* text styles */ }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body, html { width:100%; height:100%; font-family:'Segoe UI',sans-serif; }
+    #loading { background:#000; color:#0ff; display:flex; align-items:center; justify-content:center; height:100%; }
+    #main { display:none; width:100%; height:100%; background:url('TiffyAI -Treasury.jpg') center/cover no-repeat; }
+    .glass { margin:auto; background:rgba(0,0,0,0.3); padding:30px; border:2px solid cyan; border-radius:15px; text-align:center; }
+    #claimButton { width:120px; height:120px; background:url('TiffyAI-Token.png') center/contain no-repeat; border:none; border-radius:50%; cursor:pointer; animation:pulse 2s infinite; }
+    #claimButton.cooldown { animation:none; box-shadow:0 0 15px red; }
+    @keyframes pulse { 0%{transform:scale(1);}50%{transform:scale(1.05);}100%{transform:scale(1);} }
+    .info { margin-top:15px; font-size:1.1rem; color:#0ff; }
+    .price { color:gold; font-size:1rem; }
+    a#sourcifyLink { display:block; margin-top:20px; color:#0ff; text-decoration:none; }
+    a#sourcifyLink:hover { text-decoration:underline; }
   </style>
 </head>
 <body>
+  <div id="loading">Connecting wallet… check console 🛠️</div>
+
   <div id="main">
     <div class="glass">
-      <button id="claimButton" disabled title="Claim 1 TIFFY"></button>
-      <div class="info" id="cooldownInfo">Connecting wallet…</div>
+      <button id="claimButton" disabled></button>
+      <div class="info" id="cooldownInfo">…</div>
       <div class="info" id="keyInfo">🔹 Blue Keys: 0</div>
-      <div class="price" id="priceInfo">Fetching price…</div>
-      <a
-        id="sourcifyLink"
-        href="https://repo.sourcify.dev/56/0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5"
-        target="_blank"
-      >🧪 Verified on Sourcify</a>
+      <div class="price" id="priceInfo">Loading price…</div>
+      <a id="sourcifyLink" href="https://repo.sourcify.dev/56/0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5" target="_blank">
+        🧪 Verified on Sourcify
+      </a>
     </div>
   </div>
+
+  <script>
+    const CONTRACT = "0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5";
+    const ABI = [ /* Full ABI from Sourcify paste here */ ];
+    const FEE_BNB = '0.0015';
+    let web3, provider, contract, account;
+
+    const loading = document.getElementById('loading');
+    const main = document.getElementById('main');
+    const btn = document.getElementById('claimButton');
+    const cdInfo = document.getElementById('cooldownInfo');
+    const keyInfo = document.getElementById('keyInfo');
+    const priceInfo = document.getElementById('priceInfo');
+
+    async function fetchPrice(){
+      try {
+        const resp = await fetch('TIFFY-Market-Value/price.json');
+        const json = await resp.json();
+        priceInfo.textContent = `💰 ${json.tiffyToUSD} USD / ${json.tiffyToWBNB} WBNB`;
+      } catch(e){
+        console.error('Price error', e);
+        priceInfo.textContent = 'Price unavailable';
+      }
+    }
+
+    async function connectWallet(){
+      console.log('Connecting wallet…');
+      const options = {
+        walletconnect: {
+          package: window.WalletConnectProvider.default,
+          options: {
+            projectId: "bf40c7dcdb05f06f2769573103007576",
+            chains: [56],
+            rpcMap: {56:"https://bsc-dataseed.binance.org/"},
+            showQrModal: true
+          }
+        }
+      };
+      const web3Modal = new Web3Modal.default({ cacheProvider: false, providerOptions: options });
+      try {
+        provider = await web3Modal.connect();
+        web3 = new Web3(provider);
+        console.log('Provider:', provider);
+
+        let chain = await web3.eth.getChainId();
+        console.log('ChainID:', chain);
+        if(chain !== 56){
+          await provider.request({ method: 'wallet_switchEthereumChain', params:[{chainId:'0x38'}] });
+          console.log('Switched to BSC');
+        }
+
+        const accts = await web3.eth.getAccounts();
+        account = accts[0];
+        console.log('Account:', account);
+
+        contract = new web3.eth.Contract(ABI, CONTRACT);
+
+        loading.style.display = 'none';
+        main.style.display = 'block';
+        fetchPrice();
+        setInterval(fetchPrice,60000);
+
+        btn.disabled = false;
+        updateKeyDisplay();
+        await refreshCooldown();
+        setInterval(refreshCooldown,30000);
+      } catch(err){
+        console.error('Wallet connection failed', err);
+        loading.textContent = '❌ Wallet connection failed';
+      }
+    }
+
+    async function refreshCooldown(){
+      if(!contract || !account) return;
+      try {
+        const last = await contract.methods.lastClaimed(account).call();
+        const remaining = parseInt(last) + 86400 - Math.floor(Date.now()/1000);
+        if(remaining <= 0){
+          cdInfo.textContent = '✅ Claim available!';
+          btn.classList.remove('cooldown');
+          btn.disabled = false;
+        } else {
+          cdInfo.textContent = `⏳ Next claim in ${Math.floor(remaining/3600)}h ${Math.floor((remaining%3600)/60)}m`;
+          btn.classList.add('cooldown');
+          btn.disabled = true;
+        }
+      } catch(e){
+        console.error('Cooldown check failed', e);
+        cdInfo.textContent = 'Cooldown fetch error';
+      }
+    }
+
+    async function claim(){
+      btn.disabled = true;
+      try {
+        console.log('Initiating claim …');
+        const exempt = await contract.methods.isFeeExempt(account).call();
+        const opts = exempt ? {from:account} : {from:account, value: web3.utils.toWei(FEE_BNB,'ether')};
+        console.log('sendOpts:', opts);
+        await contract.methods.claim().send(opts);
+        console.log('Claim transaction confirmed');
+        const keys = (parseInt(localStorage.getItem('tiffyBlueKeys'))||0) + 1;
+        localStorage.setItem('tiffyBlueKeys', keys);
+        updateKeyDisplay();
+        alert('✅ Claimed & +1 Blue Key');
+      } catch(err){
+        console.error('Claim failed', err);
+        alert('❌ Claim error: ' + (err.message || err));
+      } finally {
+        refreshCooldown();
+      }
+    }
+
+    function updateKeyDisplay(){
+      const k = parseInt(localStorage.getItem('tiffyBlueKeys'))||0;
+      keyInfo.textContent = `🔹 Blue Keys: ${k}`;
+    }
+
+    btn.addEventListener('click', claim);
+    window.addEventListener('load', connectWallet);
+  </script>
 </body>
 </html>
