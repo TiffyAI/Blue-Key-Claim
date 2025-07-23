@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TIFFYAI Claim Portal</title>
+
+  <!-- ✅ New Wallet Libraries -->
+  <script defer src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+  <script defer src="lib/web3-provider.js"></script>
+  <script defer src="https://unpkg.com/web3modal@1.9.8/dist/index.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-image: url('TiffyAI-Treasury.jpg');
+      background-size: cover;
+      background-position: center;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      overflow: hidden;
+    }
+
+    .glass {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90%;
+      max-width: 600px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 20px;
+      padding: 30px;
+      text-align: center;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    h1 {
+      font-size: 2.5em;
+      text-shadow: 0 0 15px #00f0ff;
+    }
+
+    #claimButton {
+      padding: 15px 30px;
+      font-size: 1.2em;
+      margin-top: 20px;
+      background: linear-gradient(45deg, #00f0ff, #0078ff);
+      color: white;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 0 20px #00f0ff;
+      transition: all 0.3s ease;
+    }
+
+    #claimButton:hover {
+      background: linear-gradient(45deg, #0078ff, #00f0ff);
+      box-shadow: 0 0 30px #00f0ff;
+    }
+
+    #cooldownText {
+      margin-top: 10px;
+      font-size: 1em;
+    }
+
+    #keyImage {
+      width: 100px;
+      margin-top: 20px;
+      transition: transform 1s ease;
+    }
+
+    #keyImage.zoom-out {
+      transform: scale(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="glass">
+    <h1>Claim Your Blue Key</h1>
+    <img id="keyImage" src="Keys.png" alt="Blue Key" />
+    <p id="cooldownText"></p>
+    <button id="claimButton">Claim</button>
+  </div>
+
+  <script>
+    const cooldownKey = "claimCooldown";
+    const blueKeyCountKey = "blueKeyCount";
+
+    function getCooldown() {
+      return parseInt(localStorage.getItem(cooldownKey)) || 0;
+    }
+
+    function setCooldown(timestamp) {
+      localStorage.setItem(cooldownKey, timestamp);
+    }
+
+    function getBlueKeyCount() {
+      return parseInt(localStorage.getItem(blueKeyCountKey)) || 0;
+    }
+
+    function incrementBlueKeyCount() {
+      let count = getBlueKeyCount();
+      localStorage.setItem(blueKeyCountKey, count + 1);
+    }
+
+    function updateCooldownText() {
+      const cooldown = getCooldown();
+      const now = Date.now();
+      const diff = cooldown - now;
+
+      const cooldownText = document.getElementById("cooldownText");
+      const claimButton = document.getElementById("claimButton");
+
+      if (diff > 0) {
+        const seconds = Math.floor(diff / 1000) % 60;
+        const minutes = Math.floor(diff / (1000 * 60)) % 60;
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+
+        cooldownText.textContent = `Cooldown active: ${hours}h ${minutes}m ${seconds}s`;
+        claimButton.disabled = true;
+      } else {
+        cooldownText.textContent = "";
+        claimButton.disabled = false;
+      }
+    }
+
+    setInterval(updateCooldownText, 1000);
+
+    let web3;
+    let web3Modal;
+    let provider;
+    let selectedAccount;
+
+    window.addEventListener("load", async () => {
+      const providerOptions = {
+        walletconnect: {
+          package: window.WalletConnectProvider.default,
+          options: {
+            infuraId: "bf40c7dcdb05f06f2769573103007576", // use your real Infura ID
+          },
+        },
+      };
+
+      web3Modal = new window.Web3Modal.default({
+        cacheProvider: false,
+        providerOptions,
+      });
+
+      document.getElementById("claimButton").addEventListener("click", async () => {
+        try {
+          provider = await web3Modal.connect();
+          web3 = new Web3(provider);
+
+          const accounts = await web3.eth.getAccounts();
+          selectedAccount = accounts[0];
+
+          const cooldown = getCooldown();
+          const now = Date.now();
+          if (now < cooldown) {
+            alert("Cooldown active. Please wait.");
+            return;
+          }
+
+          // simulate claim process
+          console.log("Claiming key for:", selectedAccount);
+
+          // Animate key image
+          const keyImage = document.getElementById("keyImage");
+          keyImage.classList.add("zoom-out");
+
+          setTimeout(() => {
+            incrementBlueKeyCount();
+            setCooldown(now + 3600000); // 1 hour cooldown
+
+            // redirect if 10 Blue Keys
+            if (getBlueKeyCount() >= 10) {
+              window.location.href = "/treasure";
+            } else {
+              window.location.href = "/TiffyAI-Users/";
+            }
+          }, 1000);
+        } catch (e) {
+          console.error(e);
+          alert("Claim failed. Please try again.");
+        }
+      });
+    });
+  </script>
+</body>
+</html>
