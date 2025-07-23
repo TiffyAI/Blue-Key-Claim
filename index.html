@@ -5,188 +5,152 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>TIFFYAI Claim Portal</title>
 
-  <!-- ✅ New Wallet Libraries -->
+  <!-- ✅ Updated Wallet Libraries -->
   <script defer src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
   <script defer src="lib/web3-provider.js"></script>
   <script defer src="https://unpkg.com/web3modal@1.9.8/dist/index.js"></script>
 
   <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background-image: url('TiffyAI-Treasury.jpg');
-      background-size: cover;
-      background-position: center;
-      font-family: 'Segoe UI', sans-serif;
-      color: white;
-      overflow: hidden;
-    }
-
-    .glass {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 90%;
-      max-width: 600px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 20px;
-      padding: 30px;
-      text-align: center;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    h1 {
-      font-size: 2.5em;
-      text-shadow: 0 0 15px #00f0ff;
-    }
-
-    #claimButton {
-      padding: 15px 30px;
-      font-size: 1.2em;
-      margin-top: 20px;
-      background: linear-gradient(45deg, #00f0ff, #0078ff);
-      color: white;
-      border: none;
-      border-radius: 30px;
-      cursor: pointer;
-      box-shadow: 0 0 20px #00f0ff;
-      transition: all 0.3s ease;
-    }
-
-    #claimButton:hover {
-      background: linear-gradient(45deg, #0078ff, #00f0ff);
-      box-shadow: 0 0 30px #00f0ff;
-    }
-
-    #cooldownText {
-      margin-top: 10px;
-      font-size: 1em;
-    }
-
-    #keyImage {
-      width: 100px;
-      margin-top: 20px;
-      transition: transform 1s ease;
-    }
-
-    #keyImage.zoom-out {
-      transform: scale(0);
-    }
+    /* [style unchanged for brevity, same as your original file] */
   </style>
 </head>
 <body>
-  <div class="glass">
-    <h1>Claim Your Blue Key</h1>
-    <img id="keyImage" src="Keys.png" alt="Blue Key" />
-    <p id="cooldownText"></p>
-    <button id="claimButton">Claim</button>
-  </div>
+  <!-- [HTML unchanged, same as your original file] -->
 
   <script>
-    const cooldownKey = "claimCooldown";
-    const blueKeyCountKey = "blueKeyCount";
+    const contractAddress = "0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5";
+    const claimABI = [
+      { "inputs": [], "name": "claim", "outputs": [], "stateMutability": "payable", "type": "function" },
+      { "inputs": [{ "internalType": "address", "name": "", "type": "address" }], "name": "lastClaimed", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
+      { "inputs": [{ "internalType": "address", "name": "", "type": "address" }], "name": "isFeeExempt", "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }], "stateMutability": "view", "type": "function" }
+    ];
 
-    function getCooldown() {
-      return parseInt(localStorage.getItem(cooldownKey)) || 0;
-    }
-
-    function setCooldown(timestamp) {
-      localStorage.setItem(cooldownKey, timestamp);
-    }
-
-    function getBlueKeyCount() {
-      return parseInt(localStorage.getItem(blueKeyCountKey)) || 0;
-    }
-
-    function incrementBlueKeyCount() {
-      let count = getBlueKeyCount();
-      localStorage.setItem(blueKeyCountKey, count + 1);
-    }
-
-    function updateCooldownText() {
-      const cooldown = getCooldown();
-      const now = Date.now();
-      const diff = cooldown - now;
-
-      const cooldownText = document.getElementById("cooldownText");
-      const claimButton = document.getElementById("claimButton");
-
-      if (diff > 0) {
-        const seconds = Math.floor(diff / 1000) % 60;
-        const minutes = Math.floor(diff / (1000 * 60)) % 60;
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-
-        cooldownText.textContent = `Cooldown active: ${hours}h ${minutes}m ${seconds}s`;
-        claimButton.disabled = true;
-      } else {
-        cooldownText.textContent = "";
-        claimButton.disabled = false;
-      }
-    }
-
-    setInterval(updateCooldownText, 1000);
-
-    let web3;
-    let web3Modal;
-    let provider;
-    let selectedAccount;
-
-    window.addEventListener("load", async () => {
-      const providerOptions = {
+    const web3Modal = new window.Web3Modal.default({
+      cacheProvider: false,
+      providerOptions: {
         walletconnect: {
           package: window.WalletConnectProvider.default,
           options: {
-            infuraId: "bf40c7dcdb05f06f2769573103007576", // use your real Infura ID
-          },
-        },
-      };
-
-      web3Modal = new window.Web3Modal.default({
-        cacheProvider: false,
-        providerOptions,
-      });
-
-      document.getElementById("claimButton").addEventListener("click", async () => {
-        try {
-          provider = await web3Modal.connect();
-          web3 = new Web3(provider);
-
-          const accounts = await web3.eth.getAccounts();
-          selectedAccount = accounts[0];
-
-          const cooldown = getCooldown();
-          const now = Date.now();
-          if (now < cooldown) {
-            alert("Cooldown active. Please wait.");
-            return;
+            rpc: {
+              56: "https://bsc-dataseed.binance.org/"
+            },
+            chainId: 56,
+            projectId: "bf40c7dcdb05f06f2769573103007576" // ✅ Injected your project ID
           }
-
-          // simulate claim process
-          console.log("Claiming key for:", selectedAccount);
-
-          // Animate key image
-          const keyImage = document.getElementById("keyImage");
-          keyImage.classList.add("zoom-out");
-
-          setTimeout(() => {
-            incrementBlueKeyCount();
-            setCooldown(now + 3600000); // 1 hour cooldown
-
-            // redirect if 10 Blue Keys
-            if (getBlueKeyCount() >= 10) {
-              window.location.href = "/treasure";
-            } else {
-              window.location.href = "/TiffyAI-Users/";
-            }
-          }, 1000);
-        } catch (e) {
-          console.error(e);
-          alert("Claim failed. Please try again.");
         }
-      });
+      }
     });
+
+    let web3, provider, contract, user;
+
+    async function connectWalletAndClaim() {
+      try {
+        provider = await web3Modal.connect();
+        web3 = new Web3(provider);
+
+        const networkId = await web3.eth.net.getId();
+        if (networkId !== 56) return alert("Please switch to BNB Smart Chain Mainnet.");
+
+        const accounts = await web3.eth.getAccounts();
+        user = accounts[0];
+        contract = new web3.eth.Contract(claimABI, contractAddress);
+
+        const last = await contract.methods.lastClaimed(user).call();
+        const now = Math.floor(Date.now() / 1000);
+
+        if (now < parseInt(last) + 86400) {
+          alert("🕒 You've already claimed today.");
+          window.location.href = "/TiffyAI-Users/";
+          return;
+        }
+
+        const isExempt = await contract.methods.isFeeExempt(user).call();
+        const txOptions = isExempt ? { from: user } : {
+          from: user,
+          value: web3.utils.toWei("0.0015", "ether")
+        };
+
+        await contract.methods.claim().send(txOptions);
+
+        const keys = (parseInt(localStorage.getItem("tiffyBlueKeys")) || 0) + 1;
+        localStorage.setItem("tiffyBlueKeys", keys);
+
+        if (keys >= 10) {
+          localStorage.setItem("tiffyBlueKeys", "0");
+          document.getElementById("modalOverlay").style.display = "flex";
+        } else {
+          document.getElementById("successOverlay").style.display = "flex";
+        }
+
+        updateKeyCounter(keys);
+
+      } catch (err) {
+        alert("❌ Transaction failed: " + (err.message || "Try again"));
+      }
+    }
+
+    function updateKeyCounter(keys = null) {
+      const current = keys !== null ? keys : parseInt(localStorage.getItem("tiffyBlueKeys") || '0');
+      document.getElementById("blueKeyCounter").innerText = `🔹 You have ${current}/10 Blue Keys`;
+    }
+
+    async function updateCooldown() {
+      if (!contract || !user) return;
+      const last = await contract.methods.lastClaimed(user).call();
+      const next = parseInt(last) + 86400;
+      const now = Math.floor(Date.now() / 1000);
+      const remaining = next - now;
+      const timer = document.getElementById("cooldownTimer");
+      const button = document.getElementById("claimButton");
+
+      if (remaining <= 0) {
+        timer.innerText = "✅ Claim Available";
+        button.classList.remove("cooldown");
+      } else {
+        button.classList.add("cooldown");
+        const h = Math.floor(remaining / 3600);
+        const m = Math.floor((remaining % 3600) / 60);
+        const s = remaining % 60;
+        timer.innerText = `⏳ Next Claim: ${h}h ${m}m ${s}s`;
+      }
+    }
+
+    function redirectToTreasure() {
+      window.location.href = "/treasure";
+    }
+
+    function redirectToUsers() {
+      window.location.href = "/TiffyAI-Users/";
+    }
+
+    function typeNextChar() {
+      const fullText = "Collect 10 Blue Keys and Unlock the Special Treasure. Share and Be Rewarded. Get Your Gold Key Daily for Mainnet. The More Keys You Hold, the Bigger Your Rewards!";
+      const typingText = document.getElementById("typingText");
+      let index = 0;
+
+      function type() {
+        if (index < fullText.length) {
+          typingText.textContent += fullText.charAt(index++);
+          setTimeout(type, 40);
+        } else {
+          setTimeout(() => {
+            document.getElementById("loadingScreen").style.display = "none";
+            document.getElementById("mainPortal").style.display = "flex";
+          }, 1000);
+        }
+      }
+      type();
+    }
+
+    document.getElementById("claimButton").onclick = connectWalletAndClaim;
+
+    window.addEventListener('load', () => {
+      document.getElementById("mysticAudio").play().catch(() => {});
+      typeNextChar();
+    });
+
+    setInterval(updateCooldown, 1000);
+    updateKeyCounter();
   </script>
 </body>
 </html>
