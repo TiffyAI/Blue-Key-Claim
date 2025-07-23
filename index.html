@@ -28,7 +28,10 @@
       justify-content: center;
       align-items: center;
     }
-    #zoomKeys { width: 100px; animation: zoomOut 6s ease-out forwards; }
+    #zoomKeys {
+      width: 100px;
+      animation: zoomOut 6s ease-out forwards;
+    }
     @keyframes zoomOut {
       0% { transform: scale(1); opacity: 1; }
       100% { transform: scale(40); opacity: 0; }
@@ -108,9 +111,9 @@
       animation: growFadeOut 2.8s ease-out forwards;
     }
     @keyframes growFadeOut {
-      0% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
-      30% { transform: translate(-50%, -50%) scale(2); opacity: 0.7; }
-      60% { transform: translate(-50%, -50%) scale(5); opacity: 0.9; }
+      0%   { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+      30%  { transform: translate(-50%, -50%) scale(2); opacity: 0.7; }
+      60%  { transform: translate(-50%, -50%) scale(5); opacity: 0.9; }
       100% { transform: translate(-50%, -50%) scale(10); opacity: 0; }
     }
     .modalOverlay {
@@ -198,20 +201,11 @@
       }
     };
 
-    const web3Modal = new Web3Modal.default({ cacheProvider: false, providerOptions });
+    const web3Modal = new window.Web3Modal.default({ cacheProvider: false, providerOptions });
 
     try {
       provider = await web3Modal.connect();
       web3 = new Web3(provider);
-
-      console.log("✅ Connected:", provider);
-      console.log("🔎 Provider flags:", {
-        isMetaMask: provider.isMetaMask,
-        isTrust: provider.isTrust,
-        isBitget: provider.isBitget,
-        isBinance: provider.isBinance
-      });
-
       const accounts = await web3.eth.getAccounts();
       user = accounts[0];
 
@@ -222,27 +216,10 @@
             method: 'wallet_switchEthereumChain',
             params: [{ chainId: '0x38' }],
           });
+          web3 = new Web3(provider);
         } catch (err) {
-          if (provider.isBitget || provider.isBitKeep) {
-            try {
-              await provider.request({
-                method: 'wallet_addEthereumChain',
-                params: [{
-                  chainId: '0x38',
-                  chainName: 'BNB Smart Chain',
-                  rpcUrls: ['https://bsc-dataseed.binance.org/'],
-                  nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
-                  blockExplorerUrls: ['https://bscscan.com']
-                }]
-              });
-            } catch {
-              alert("⚠️ Bitget users: Please switch to BNB Smart Chain manually.");
-              return;
-            }
-          } else {
-            alert("❌ Switch to BNB Smart Chain required.");
-            return;
-          }
+          alert("❌ Please switch to BNB Smart Chain to continue.");
+          return;
         }
       }
 
@@ -279,7 +256,7 @@
 
       updateKeyCounter(keys);
     } catch (err) {
-      console.error("❌ Claim failed:", err);
+      console.error("❌ Wallet connection or claim failed:", err);
       alert("❌ Transaction failed: " + (err.message || "Try again"));
     }
   }
@@ -323,6 +300,7 @@
     const fullText = "Collect 10 Blue Keys and Unlock the Special Treasure. Share and Be Rewarded. Get Your Gold Key Daily for Mainnet. The More Keys You Hold, the Bigger Your Rewards!";
     const typingText = document.getElementById("typingText");
     let index = 0;
+
     function type() {
       if (index < fullText.length) {
         typingText.textContent += fullText.charAt(index++);
@@ -346,4 +324,4 @@
   });
 </script>
 </body>
-</html>I will 
+</html>
