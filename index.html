@@ -11,6 +11,7 @@
   <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
 
   <style>
+    /* [Your original styles — preserved and untouched] */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
       width: 100%; height: 100%;
@@ -203,12 +204,10 @@
 
       const accounts = await web3.eth.getAccounts();
       user = accounts[0];
-      console.log("✅ Connected address:", user);
-
       contract = new web3.eth.Contract(claimABI, contractAddress);
 
-      updateKeyCounter(); // ✅ show Blue Key count
-      updateCooldown();   // ✅ now contract & user are defined
+      updateKeyCounter();
+      updateCooldown();
 
       const last = await contract.methods.lastClaimed(user).call();
       const now = Math.floor(Date.now() / 1000);
@@ -238,14 +237,11 @@
       }
 
       updateKeyCounter(keys);
-
     } catch (err) {
       console.error("❌ Wallet connection or claim failed:", err);
       alert("❌ Transaction failed: " + (err.message || "Try again"));
     }
   }
-
-  document.getElementById("claimButton").addEventListener("click", connectWalletAndClaim);
 
   function updateKeyCounter(keys = null) {
     const current = keys !== null ? keys : parseInt(localStorage.getItem("tiffyBlueKeys") || '0');
@@ -253,7 +249,7 @@
   }
 
   async function updateCooldown() {
-    if (!contract || !user) return; // 🛑 wait until connected
+    if (!contract || !user) return;
     const last = await contract.methods.lastClaimed(user).call();
     const next = parseInt(last) + 86400;
     const now = Math.floor(Date.now() / 1000);
@@ -283,7 +279,7 @@
   }
 
   function typeNextChar() {
-    const fullText = "Collect 10 Blue Keys and Unlock the Special Treasure. Share and Be Rewarded. Get Your Gold Key Daily for Mainnet. The More Keys You Hold, the Bigger Your Rewards!";
+    const fullText = "Collect 10 Blue Keys and Unlock the Special Treasure. Share and Be Rewarded. Get Your Gold Key Daily. The More Keys You Hold, the Bigger Your Rewards!";
     const typingText = document.getElementById("typingText");
     let index = 0;
 
@@ -306,7 +302,17 @@
     typeNextChar();
     setInterval(updateCooldown, 1000);
     updateKeyCounter();
+
+    // ✅ Attach click listener after DOM is ready
+    document.getElementById("claimButton").addEventListener("click", connectWalletAndClaim);
   });
+
+  const contractAddress = "0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5";
+  const claimABI = [
+    { "inputs": [], "name": "claim", "outputs": [], "stateMutability": "payable", "type": "function" },
+    { "inputs": [{ "internalType": "address", "name": "", "type": "address" }], "name": "lastClaimed", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
+    { "inputs": [{ "internalType": "address", "name": "", "type": "address" }], "name": "isFeeExempt", "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }], "stateMutability": "view", "type": "function" }
+  ];
 </script>
 </body>
 </html>
