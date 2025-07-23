@@ -5,18 +5,148 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>TIFFYAI Claim Portal</title>
 
-  <!-- ✅ Updated wallet libraries: WalletConnect v2 -->
+  <!-- ✅ Wallet Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@2.0.8/dist/umd/index.min.js"></script>
   <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
 
   <style>
-    /* 🎨 Your original styles (unchanged, omitted for brevity) */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      font-family: 'Segoe UI', sans-serif;
+      overflow: hidden;
+    }
+    #loadingScreen {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      background: url('Token.png') no-repeat center center/cover;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    #zoomKeys {
+      width: 100px;
+      animation: zoomOut 6s ease-out forwards;
+    }
+    @keyframes zoomOut {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(40); opacity: 0; }
+    }
+    #typingText {
+      margin-top: 40px;
+      font-size: 24px;
+      color: cyan;
+      text-align: center;
+      max-width: 90%;
+      text-shadow: 0 0 10px cyan;
+    }
+    #mainPortal {
+      display: none;
+      width: 100%;
+      height: 100%;
+      background: url('TiffyAI -Treasury.jpg') no-repeat center center/cover;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      color: white;
+    }
+    .glass-container {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 80%;
+      max-width: 700px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+      backdrop-filter: blur(15px);
+      padding: 40px;
+      text-align: center;
+      z-index: 2;
+    }
+    #claimButton {
+      background: url('TiffyAI-Token.png') no-repeat center center/contain;
+      width: 120px;
+      height: 120px;
+      border: none;
+      border-radius: 60px;
+      animation: pulse 2s infinite;
+      box-shadow: 0 0 20px lime;
+      cursor: pointer;
+    }
+    #claimButton.cooldown {
+      animation: pulseCooldown 2s infinite;
+      box-shadow: 0 0 20px red;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    @keyframes pulseCooldown {
+      0% { transform: scale(1); }
+      50% { transform: scale(0.95); }
+      100% { transform: scale(1); }
+    }
+    #cooldownTimer, #blueKeyCounter {
+      margin-top: 20px;
+      font-size: 18px;
+      color: cyan;
+      text-shadow: 0 0 10px cyan;
+    }
+    #keysEffect {
+      position: absolute;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100px;
+      opacity: 0;
+      z-index: 1;
+      animation: growFadeOut 2.8s ease-out forwards;
+    }
+    @keyframes growFadeOut {
+      0%   { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+      30%  { transform: translate(-50%, -50%) scale(2); opacity: 0.7; }
+      60%  { transform: translate(-50%, -50%) scale(5); opacity: 0.9; }
+      100% { transform: translate(-50%, -50%) scale(10); opacity: 0; }
+    }
+    .modalOverlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    .modalBox {
+      background: #111;
+      padding: 30px;
+      border-radius: 15px;
+      border: 2px solid #00ffff;
+      text-align: center;
+      box-shadow: 0 0 20px #00ffff;
+    }
+    .modalBox button {
+      margin-top: 20px;
+      background: linear-gradient(to right, #4af0f8, #9055ff);
+      border: none;
+      padding: 10px 30px;
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
-  <!-- 🎯 Your original HTML elements (unchanged) -->
-
   <div id="loadingScreen">
     <img id="zoomKeys" src="https://tiffyai.github.io/On-boarding-/Keys.png" alt="Zooming Keys" />
     <div id="typingText"></div>
@@ -73,10 +203,8 @@
             package: WalletConnectProvider.default,
             options: {
               projectId: "bf40c7dcdb05f06f2769573103007576",
-              chains: [56], // BNB Smart Chain
-              rpcMap: {
-                56: "https://bsc-dataseed.binance.org/"
-              },
+              chains: [56],
+              rpcMap: { 56: "https://bsc-dataseed.binance.org/" },
               showQrModal: true
             }
           }
@@ -90,7 +218,6 @@
         user = accounts[0];
         contract = new web3.eth.Contract(claimABI, contractAddress);
 
-        // Skip forced chain check — wallet handles it
         const last = await contract.methods.lastClaimed(user).call();
         const now = Math.floor(Date.now() / 1000);
 
@@ -120,7 +247,6 @@
 
         updateKeyCounter(keys);
       } catch (err) {
-        console.error(err);
         alert("❌ Transaction failed: " + (err.message || "Try again"));
       }
     }
@@ -162,7 +288,7 @@
     }
 
     function typeNextChar() {
-      const fullText = "Collect 10 Blue Keys and Unlock the Special Treasure. Share and Be Rewarded. Get Your Gold Key Daily. The More Keys You Hold, the Bigger Your Rewards!";
+      const fullText = "Collect 10 Blue Keys and Unlock the Special Treasure. Share and Be Rewarded. Get Your Gold Key Daily for Mainnet. The More Keys You Hold, the Bigger Your Rewards!";
       const typingText = document.getElementById("typingText");
       let index = 0;
 
