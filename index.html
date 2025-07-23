@@ -7,7 +7,7 @@
 
   <!-- ✅ Wallet Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@2.0.8/dist/umd/index.min.js"></script>
+  <script src="lib/web3-provider.js"></script>
   <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
 
   <style>
@@ -189,15 +189,10 @@
     let web3, provider, contract, user;
 
     async function connectWalletAndClaim() {
-      console.log("🟦 Claim button clicked");
-
+      console.log("🔌 Initiating WalletConnect flow...");
       const providerOptions = {
-        injected: {
-          display: { name: "Browser Wallet", description: "Connect with browser wallet" },
-          package: null
-        },
         walletconnect: {
-          package: WalletConnectProvider.default,
+          package: window.WalletConnectProvider.default,
           options: {
             projectId: "bf40c7dcdb05f06f2769573103007576",
             chains: [56],
@@ -207,27 +202,21 @@
         }
       };
 
-      const web3Modal = new Web3Modal.default({ cacheProvider: false, providerOptions });
+      const web3Modal = new window.Web3Modal.default({ cacheProvider: false, providerOptions });
 
       try {
-        console.log("🟡 Opening Web3Modal...");
         provider = await web3Modal.connect();
-        console.log("🟢 Provider loaded:", provider);
-
         web3 = new Web3(provider);
+
         const accounts = await web3.eth.getAccounts();
         user = accounts[0];
-        console.log("✅ Connected wallet address:", user);
-
         contract = new web3.eth.Contract(claimABI, contractAddress);
-        console.log("📦 Contract instance created.");
 
         updateKeyCounter();
         updateCooldown();
 
         const last = await contract.methods.lastClaimed(user).call();
         const now = Math.floor(Date.now() / 1000);
-        console.log("🕒 Last claimed timestamp:", last);
 
         if (now < parseInt(last) + 86400) {
           alert("🕒 You've already claimed today.");
@@ -236,14 +225,11 @@
         }
 
         const isExempt = await contract.methods.isFeeExempt(user).call();
-        console.log("💰 Is user fee exempt?", isExempt);
-
         const txOptions = isExempt ? { from: user } : {
           from: user,
           value: web3.utils.toWei("0.0015", "ether")
         };
 
-        console.log("🚀 Sending claim transaction...");
         await contract.methods.claim().send(txOptions);
 
         const keys = (parseInt(localStorage.getItem("tiffyBlueKeys")) || 0) + 1;
@@ -257,7 +243,7 @@
         }
 
         updateKeyCounter(keys);
-        console.log("🔷 Claim complete. Keys:", keys);
+
       } catch (err) {
         console.error("❌ Wallet connection or claim failed:", err);
         alert("❌ Transaction failed: " + (err.message || "Try again"));
@@ -319,21 +305,10 @@
     }
 
     window.addEventListener("load", () => {
-      console.log("🌍 Page fully loaded");
-
       document.getElementById("mysticAudio").play().catch(() => {});
       typeNextChar();
 
-      const btn = document.getElementById("claimButton");
-      console.log("🛠 Found claimButton:", btn);
-
-      if (btn) {
-        btn.addEventListener("click", connectWalletAndClaim);
-        console.log("✅ Claim button handler attached");
-      } else {
-        console.error("❌ Could not find claim button");
-      }
-
+      document.getElementById("claimButton").addEventListener("click", connectWalletAndClaim);
       setInterval(updateCooldown, 1000);
       updateKeyCounter();
     });
