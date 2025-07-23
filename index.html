@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TiffyAI Claim Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <!-- Wallet & Web3 Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+  <script src="lib/web3-provider.js"></script>
+  <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+  <script defer src="claim.js"></script>
+
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      background: black;
+      color: cyan;
+      font-family: 'Segoe UI', sans-serif;
+      overflow: hidden;
+    }
+    #main { /* blurred backdrop with treasury image */ }
+    .glass { /* styling as before */ }
+    #claimButton { /* styling & pulse */ }
+    #claimButton.cooldown { /* red error state */ }
+    .info, .price { /* text styles */ }
+  </style>
+</head>
+<body>
+  <div id="main">
+    <div class="glass">
+      <button id="claimButton" disabled title="Claim 1 TIFFY"></button>
+      <div class="info" id="cooldownInfo">Connecting wallet…</div>
+      <div class="info" id="keyInfo">🔹 Blue Keys: 0</div>
+      <div class="price" id="priceInfo">Fetching price…</div>
+      <a
+        id="sourcifyLink"
+        href="https://repo.sourcify.dev/56/0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5"
+        target="_blank"
+      >🧪 Verified on Sourcify</a>
+    </div>
+  </div>
+</body>
+</html>
