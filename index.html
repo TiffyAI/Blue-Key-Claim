@@ -1,1182 +1,164 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TiffyAI Claim Portal</title>
+
+  <!-- Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
   <script src="lib/web3-provider.js"></script>
   <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    html,body { height:100%; font-family:'Segoe UI'; background:black; color:cyan; }
-    #main {
-      display:flex; align-items:center; justify-content:center;
-      background:url('TiffyAI -Treasury.jpg') center/cover no-repeat;
-      height:100vh;
-    }
-    .glass {
-      background:rgba(0,0,0,0.6); border:2px solid cyan;
-      border-radius:20px; padding:40px; text-align:center;
-      box-shadow:0 0 20px cyan;
-    }
-    #claimBtn {
-      width:120px; height:120px;
-      background:url('TiffyAI-Token.png') center/contain no-repeat;
-      border:none; border-radius:50%; cursor:pointer;
-      animation:pulse 2s infinite; box-shadow:0 0 20px lime;
-    }
-    #claimBtn.cooldown { animation:none; box-shadow:0 0 20px red; }
-    @keyframes pulse {
-      0%,100%{transform:scale(1);}50%{transform:scale(1.05);}
-    }
-    .info { margin:20px 0; font-size:1.2rem; }
-    .price { color:gold; font-size:1rem; }
-    a { color:#00ffff; font-size:.9rem; text-decoration:none; }
+    body { font-family:'Segoe UI'; background:black; color:cyan; height:100vh; display:flex; justify-content:center; align-items:center; overflow:hidden; }
+    #container { text-align:center; }
+    button { padding:15px 30px; font-size:1rem; border:none; border-radius:8px; cursor:pointer; background:#00ffe7; color:#000; margin:10px; }
+    button.cooldown { animation:none; box-shadow:0 0 20px red; }
+    #claimButton { width:120px; height:120px; background:url('TiffyAI-Token.png') center/contain no-repeat; border:none; border-radius:50%; cursor:pointer; animation:pulse 2s infinite; }
+    @keyframes pulse { 0%{transform:scale(1);}50%{transform:scale(1.05);}100%{transform:scale(1);} }
+    .info { margin:10px 0; font-size:1.2rem; }
+    .price { color: gold; margin-top:5px; font-size:1rem; }
+    a { color:#0ff; text-decoration:none; }
     a:hover { text-decoration:underline; }
   </style>
 </head>
 <body>
-  <div id="main">
-    <div class="glass">
-      <button id="claimBtn" title="Claim 1 TIFFY"></button>
-      <div class="info" id="statusInfo">Checking eligibility…</div>
+  <div id="container">
+    <button id="connectBtn">🔌 Connect Wallet</button>
+    <div id="walletDisplay">Not connected</div>
+    <div id="mainContent" style="display:none;">
+      <button id="claimButton" title="Claim TIFFY"></button>
+      <div class="info" id="cooldownInfo">Checking...</div>
       <div class="info" id="keyInfo">🔹 Blue Keys: 0</div>
-      <div class="price" id="priceInfo">Loading price…</div>
-      <a href="https://repo.sourcify.dev/56/0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5"
-         target="_blank">🧪 Verified on Sourcify</a>
+      <div class="price" id="priceInfo">Loading price...</div>
+      <a href="https://repo.sourcify.dev/56/0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5" target="_blank">🧪 Verified on Sourcify</a>
     </div>
   </div>
+
   <script>
-    // Contract + ABI (paste your full ABI JSON array below):
+    /* 👑 YOUR CONTRACT & ABI */
     const CONTRACT = "0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5";
-    const ABI = [
-    {
-      "inputs": [],
-      "stateMutability": "nonpayable",
-      "type": "constructor"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "tokenIn",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "tokenOut",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amountIn",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amountOut",
-          "type": "uint256"
-        }
-      ],
-      "name": "AITradeExecuted",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "owner",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "spender",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "value",
-          "type": "uint256"
-        }
-      ],
-      "name": "Approval",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "BestowedBlessings",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "user",
-          "type": "address"
-        }
-      ],
-      "name": "Claimed",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "GrowthWalletFunded",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "previousOwner",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "newOwner",
-          "type": "address"
-        }
-      ],
-      "name": "OwnershipTransferred",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "user",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "RewardsClaimed",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "TokensBurned",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "user",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "TokensStaked",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "from",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "to",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "value",
-          "type": "uint256"
-        }
-      ],
-      "name": "Transfer",
-      "type": "event"
-    },
-    {
-      "inputs": [],
-      "name": "ADMIN_OWNER",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "BURN_PERCENT",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "FIXED_BNB_FEE",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "MAX_SUPPLY",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "WBNB",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint8",
-          "name": "newRate",
-          "type": "uint8"
-        }
-      ],
-      "name": "adjustRewards",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "to",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "adminMint",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "tokenOut",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "amountOutMin",
-          "type": "uint256"
-        }
-      ],
-      "name": "aiSwapBNBForToken",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "tokenIn",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "amountIn",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "amountOutMin",
-          "type": "uint256"
-        }
-      ],
-      "name": "aiSwapTokenForBNB",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "tokenIn",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "tokenOut",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "amountIn",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "amountOutMin",
-          "type": "uint256"
-        }
-      ],
-      "name": "aiSwapTokenForToken",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "owner",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "spender",
-          "type": "address"
-        }
-      ],
-      "name": "allowance",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "spender",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "approve",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
-        }
-      ],
-      "name": "balanceOf",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "blessings",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "boostNFT",
-      "outputs": [
-        {
-          "internalType": "contract IERC721",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "burnAddress",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "user",
-          "type": "address"
-        }
-      ],
-      "name": "calculateRewards",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "claim",
-      "outputs": [],
-      "stateMutability": "payable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "claimStakingRewards",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "cooldownTime",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "decimals",
-      "outputs": [
-        {
-          "internalType": "uint8",
-          "name": "",
-          "type": "uint8"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "spender",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "subtractedValue",
-          "type": "uint256"
-        }
-      ],
-      "name": "decreaseAllowance",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "governanceVoters",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "growthWallet",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "spender",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "addedValue",
-          "type": "uint256"
-        }
-      ],
-      "name": "increaseAllowance",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "isFeeExempt",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "lastClaimed",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "liquidity",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "name",
-      "outputs": [
-        {
-          "internalType": "string",
-          "name": "",
-          "type": "string"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "owner",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "pancakeRouter",
-      "outputs": [
-        {
-          "internalType": "contract IPancakeRouter",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "path",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "voter",
-          "type": "address"
-        }
-      ],
-      "name": "registerVoter",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "renounceOwnership",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "wallet",
-          "type": "address"
-        },
-        {
-          "internalType": "bool",
-          "name": "exempt",
-          "type": "bool"
-        }
-      ],
-      "name": "setFeeExempt",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "nftAddress",
-          "type": "address"
-        }
-      ],
-      "name": "setNFTBoostContract",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "router",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "wbnbAddress",
-          "type": "address"
-        }
-      ],
-      "name": "setPancakeRouter",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "stakeStart",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "stakeTokens",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "stakedBalances",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "stakingPool",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "stakingRewardRate",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "symbol",
-      "outputs": [
-        {
-          "internalType": "string",
-          "name": "",
-          "type": "string"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "totalSupply",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "recipient",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "transfer",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "from",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "to",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "transferFrom",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "newOwner",
-          "type": "address"
-        }
-      ],
-      "name": "transferOwnership",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "treasury",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "newPercent",
-          "type": "uint256"
-        }
-      ],
-      "name": "updateBurnPercent",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "newFee",
-          "type": "uint256"
-        }
-      ],
-      "name": "updateFixedFee",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "_treasury",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "_liquidity",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "_blessings",
-          "type": "address"
-        }
-      ],
-      "name": "updateWallets",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "name": "voteOnProposal",
-      "outputs": [],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "stateMutability": "payable",
-      "type": "receive"
-    } 
-    ];
+    const ABI = [ /* <-- paste your single-bracket ABI here */ ];
 
     let web3, provider, contract, account;
+    const connectBtn = document.getElementById("connectBtn");
+    const walletDisplay = document.getElementById("walletDisplay");
+    const mainContent = document.getElementById("mainContent");
+    const cooldownInfo = document.getElementById("cooldownInfo");
+    const keyInfo = document.getElementById("keyInfo");
+    const priceInfo = document.getElementById("priceInfo");
+    const claimButton = document.getElementById("claimButton");
 
-    async function setup() {
-      const opts = {
+    async function connectWallet() {
+      const options = {
         walletconnect: {
           package: window.WalletConnectProvider.default,
           options: {
-            projectId:"bf40c7dcdb05f06f2769573103007576",
-            chains:[56],
-            rpcMap:{56:"https://bsc-dataseed.binance.org/"},
-            showQrModal:true
+            projectId: "bf40c7dcdb05f06f2769573103007576",
+            chains: [56],
+            rpcMap: { 56: "https://bsc-dataseed.binance.org/" }
           }
         }
       };
-      const modal = new Web3Modal.default({cacheProvider:true, providerOptions:opts});
-      provider = await modal.connect();
-      web3 = new Web3(provider);
-      const cID = await web3.eth.getChainId();
-      if(cID !== 56) {
+      const modal = new Web3Modal.default({ cacheProvider: false, providerOptions: options });
+      try {
+        provider = await modal.connect();
+        web3 = new Web3(provider);
+        const [acct] = await web3.eth.getAccounts();
+        account = acct;
+        walletDisplay.innerText = account.slice(0,6)+"..."+account.slice(-4);
+        await ensureBNBNetwork();
+        contract = new web3.eth.Contract(ABI, CONTRACT);
+        connectBtn.style.display = "none";
+        mainContent.style.display = "block";
+        updateDisplay();
+        setInterval(updateDisplay, 30000);
+      } catch(err) {
+        console.error("Conn failed:", err);
+        alert("Wallet connect error: " + (err.message||err));
+      }
+    }
+
+    async function ensureBNBNetwork() {
+      const chain = await web3.eth.getChainId();
+      if (chain !== 56) {
         try {
-          await provider.request({ method:'wallet_switchEthereumChain', params:[{chainId:'0x38'}] });
-        } catch (ex) {
-          await provider.request({ method:'wallet_addEthereumChain', params:[{
-            chainId:'0x38',chainName:'BNB Smart Chain',
-            rpcUrls:['https://bsc-dataseed.binance.org/'],
-            nativeCurrency:{name:'BNB',symbol:'BNB',decimals:18},
-            blockExplorerUrls:['https://bscscan.com']
-          }]});
+          await provider.request({ method:"wallet_switchEthereumChain", params:[{ chainId:"0x38" }] });
+        } catch(err) {
+          if (provider.isBitget || provider.isBitKeep) {
+            await provider.request({ method:"wallet_addEthereumChain", params:[{
+              chainId:"0x38", chainName:"BNB Smart Chain",
+              rpcUrls:["https://bsc-dataseed.binance.org/"],
+              nativeCurrency:{name:"BNB",symbol:"BNB",decimals:18},
+              blockExplorerUrls:["https://bscscan.com"]
+            }]});
+          } else throw err;
         }
       }
-      account = (await web3.eth.getAccounts())[0];
-      contract = new web3.eth.Contract(ABI,CONTRACT);
-      refreshAll();
     }
 
-    async function refreshAll() {
-      await updatePrice();
-      await updateCooldown();
-      updateKeys();
+    async function updateDisplay() {
+      await fetchPrice();
+      await checkCooldown();
+      updateKeyInfo();
     }
 
-    async function updatePrice() {
+    async function fetchPrice() {
       try {
         const res = await fetch("TIFFY-Market-Value/price.json");
         const d = await res.json();
-        document.getElementById("priceInfo").innerText = `💰 ${d.tiffyToUSD} USD / ${d.tiffyToWBNB} WBNB`;
-      } catch { document.getElementById("priceInfo").innerText="Price loading failed"; }
-    }
-
-    function updateKeys() {
-      const k = parseInt(localStorage.getItem("tiffyBlueKeys"))||0;
-      document.getElementById("keyInfo").innerText = `🔹 Blue Keys: ${k}`;
-    }
-
-    async function updateCooldown() {
-      const btn = document.getElementById("claimBtn");
-      const info = document.getElementById("statusInfo");
-      try {
-        const last = +await contract.methods.lastClaimed(account).call();
-        const rem = last + 86400 - Math.floor(Date.now()/1000);
-        if(rem<=0) {
-          btn.disabled=false; btn.classList.remove("cooldown");
-          info.innerText = "✅ Claim available";
-        } else {
-          btn.disabled=true; btn.classList.add("cooldown");
-          const h=Math.floor(rem/3600), m=Math.floor(rem%3600/60), s=rem%60;
-          info.innerText = `⏳ Next claim: ${h}h ${m}m ${s}s`;
-        }
-      } catch(e) {
-        btn.disabled=true; info.innerText="Error fetching cooldown";
-        console.error(e);
+        priceInfo.innerText = `💰 $${d.tiffyToUSD} / ${d.tiffyToWBNB} WBNB`;
+      } catch(err) {
+        console.error("Price error:", err);
+        priceInfo.innerText = "Price unavailable";
       }
+    }
+
+    async function checkCooldown() {
+      try {
+        const last = await contract.methods.lastClaimed(account).call();
+        const now = Math.floor(Date.now()/1000);
+        const rem = parseInt(last)+86400 - now;
+        claimButton.disabled = rem > 0;
+        if (rem > 0) {
+          const h = Math.floor(rem/3600), m = Math.floor(rem%3600/60), s = rem%60;
+          cooldownInfo.innerText = `⏳ Next claim: ${h}h ${m}m ${s}s`;
+          claimButton.classList.add("cooldown");
+        } else {
+          cooldownInfo.innerText = "✅ Claim available";
+          claimButton.classList.remove("cooldown");
+        }
+      } catch(err) {
+        console.error("Cooldown error:", err);
+        cooldownInfo.innerText = "Error fetching cooldown.";
+      }
+    }
+
+    function updateKeyInfo() {
+      const k = parseInt(localStorage.getItem("tiffyBlueKeys")) || 0;
+      keyInfo.innerText = `🔹 Blue Keys: ${k}`;
     }
 
     async function claim() {
       try {
         const exempt = await contract.methods.isFeeExempt(account).call();
-        const opts = exempt ? {from:account} : {from:account, value:web3.utils.toWei("0.0015","ether")};
+        const opts = exempt?{from:account}:{from:account, value:web3.utils.toWei("0.00086","ether")};
         await contract.methods.claim().send(opts);
-        const k = (parseInt(localStorage.getItem("tiffyBlueKeys"))||0) + 1;
-        localStorage.setItem("tiffyBlueKeys", k);
-        updateKeys(); updateCooldown();
-        alert("✅ Claimed 1 TIFFY & earned 1 Blue Key!");
-      } catch(e) {
-        console.error("Claim failed:", e);
-        alert("❌ Claim failed: "+(e.message||"Try again"));
+        const newKeys = (parseInt(localStorage.getItem("tiffyBlueKeys"))||0)+1;
+        localStorage.setItem("tiffyBlueKeys", newKeys);
+        updateKeyInfo();
+        alert("✅ Claimed 1 TIFFY + 1 Blue Key!");
+        await checkCooldown();
+      } catch(err) {
+        console.error("Claim failed:", err);
+        alert("❌ Claim failed: "+(err.message||err));
       }
     }
 
-    document.getElementById("claimBtn").onclick = claim;
-    window.onload = setup;
-    setInterval(updateCooldown, 15000);
-    setInterval(updatePrice, 60000);
+    connectBtn.addEventListener("click", connectWallet);
+    claimButton.addEventListener("click", claim);
   </script>
 </body>
 </html>
