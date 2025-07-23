@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TIFFYAI Claim Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script defer src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+  <script defer src="lib/web3-provider.js"></script>
+  <script defer src="https://unpkg.com/web3modal@1.9.8/dist/index.js"></script>
+  <style>
+    /* All your original CSS untouched for layout and animations */
+    /* [Same styling from your original Claim file] */
+    body, html {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      height: 100%;
+      overflow: hidden;
+    }
+    #loadingScreen {
+      background: url('Token.png') no-repeat center center/cover;
+      height: 100%;
+      width: 100%;
+      position: fixed;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    #mainPortal {
+      display: none;
+      height: 100%;
+      width: 100%;
+      background: url('TiffyAI -Treasury.jpg') no-repeat center center/cover;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      position: relative;
+    }
+    .glass-container {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 40px;
+      border-radius: 20px;
+      backdrop-filter: blur(15px);
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+      position: absolute;
+      top: 50%;
+      right: 0;
+      transform: translateY(-50%);
+      width: 80%;
+      max-width: 700px;
+      text-align: center;
+    }
+    #claimButton {
+      background: url('TiffyAI-Token.png') no-repeat center center/contain;
+      width: 120px;
+      height: 120px;
+      border: none;
+      border-radius: 60px;
+      animation: pulse 2s infinite;
+      box-shadow: 0 0 20px lime;
+      cursor: pointer;
+    }
+    #claimButton.cooldown {
+      animation: pulseCooldown 2s infinite;
+      box-shadow: 0 0 20px red;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    @keyframes pulseCooldown {
+      0% { transform: scale(1); }
+      50% { transform: scale(0.95); }
+      100% { transform: scale(1); }
+    }
+    #typingText, #cooldownTimer, #blueKeyCounter {
+      margin-top: 20px;
+      font-size: 18px;
+      color: cyan;
+      text-shadow: 0 0 10px cyan;
+    }
+  </style>
+</head>
+<body>
+  <div id="loadingScreen">
+    <img id="zoomKeys" src="https://tiffyai.github.io/On-boarding-/Keys.png" />
+    <div id="typingText"></div>
+    <audio id="mysticAudio" src="mystic-hum.mp3" preload="auto"></audio>
+  </div>
+
+  <div id="mainPortal">
+    <img id="keysEffect" src="https://tiffyai.github.io/On-boarding-/Keys.png" />
+    <div class="glass-container">
+      <button id="claimButton" title="Claim"></button>
+      <div id="cooldownTimer">Checking claim status...</div>
+      <div id="blueKeyCounter"></div>
+    </div>
+  </div>
+
+  <script>
+    const contractAddress = "0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5";
+    const claimABI = [
+      { "inputs": [], "name": "claim", "outputs": [], "stateMutability": "payable", "type": "function" },
+      { "inputs": [{ "internalType": "address", "name": "", "type": "address" }], "name": "lastClaimed", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
+      { "inputs": [{ "internalType": "address", "name": "", "type": "address" }], "name": "isFeeExempt", "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }], "stateMutability": "view", "type": "function" }
+    ];
+
+    let web3, provider, contract, user;
+
+    const providerOptions = {
+      walletconnect: {
+        package: window.WalletConnectProvider.default,
+        options: {
+          rpc: { 56: "https://bsc-dataseed.binance.org/" }
+        }
+      }
+    };
+
+    const web3Modal = new Web3Modal.default({
+      cacheProvider: false,
+      providerOptions
+    });
+
+    async function connectWalletAndClaim() {
+      try {
+        provider = await web3Modal.connect();
+        web3 = new Web3(provider);
+        const chainId = await web3.eth.getChainId();
+        if (chainId !== 56) {
+          alert("❌ Please switch to BNB Smart Chain (Chain ID 56).");
+          return;
+        }
+
+        const accounts = await web3.eth.getAccounts();
+        user = accounts[0];
+        contract = new web3.eth.Contract(claimABI, contractAddress);
+
+        const last = await contract.methods.lastClaimed(user).call();
+        const now = Math.floor(Date.now() / 1000);
+
+        if (now < parseInt(last) + 86400) {
+          alert("🕒 You've already claimed today.");
+          window.location.href = "/TiffyAI-Users/";
+          return;
+        }
+
+        const isExempt = await contract.methods.isFeeExempt(user).call();
+        const txOptions = isExempt ? { from: user } : {
+          from: user,
+          value: web3.utils.toWei("0.0015", "ether")
+        };
+
+        await contract.methods.claim().send(txOptions);
+
+        const keys = (parseInt(localStorage.getItem("tiffyBlueKeys")) || 0) + 1;
+        localStorage.setItem("tiffyBlueKeys", keys);
+
+        if (keys >= 10) {
+          localStorage.setItem("tiffyBlueKeys", "0");
+          alert("🎁 Treasure Unlocked! 10 Keys collected.");
+          window.location.href = "/treasure";
+        } else {
+          alert("✅ Claimed! You've earned a Blue Key.");
+          window.location.href = "/TiffyAI-Users/";
+        }
+
+        updateKeyCounter(keys);
+      } catch (err) {
+        console.error("❌ Transaction Error:", err);
+        alert("❌ " + (err?.message || "Something went wrong."));
+      }
+    }
+
+    function updateKeyCounter(keys = null) {
+      const count = keys !== null ? keys : parseInt(localStorage.getItem("tiffyBlueKeys") || '0');
+      document.getElementById("blueKeyCounter").innerText = `🔹 You have ${count}/10 Blue Keys`;
+    }
+
+    async function updateCooldown() {
+      if (!contract || !user) return;
+      const last = await contract.methods.lastClaimed(user).call();
+      const next = parseInt(last) + 86400;
+      const now = Math.floor(Date.now() / 1000);
+      const remaining = next - now;
+
+      const timer = document.getElementById("cooldownTimer");
+      const button = document.getElementById("claimButton");
+
+      if (remaining <= 0) {
+        timer.innerText = "✅ Claim Available";
+        button.classList.remove("cooldown");
+      } else {
+        button.classList.add("cooldown");
+        const h = Math.floor(remaining / 3600);
+        const m = Math.floor((remaining % 3600) / 60);
+        const s = remaining % 60;
+        timer.innerText = `⏳ Next Claim: ${h}h ${m}m ${s}s`;
+      }
+    }
+
+    function typeNextChar() {
+      const fullText = "Collect 10 Blue Keys and Unlock the Special Treasure. Share and Be Rewarded. Get Your Gold Key Daily for Mainnet. The More Keys You Hold, the Bigger Your Rewards!";
+      const typingText = document.getElementById("typingText");
+      let index = 0;
+
+      function type() {
+        if (index < fullText.length) {
+          typingText.textContent += fullText.charAt(index++);
+          setTimeout(type, 40);
+        } else {
+          setTimeout(() => {
+            document.getElementById("loadingScreen").style.display = "none";
+            document.getElementById("mainPortal").style.display = "flex";
+          }, 1000);
+        }
+      }
+      type();
+    }
+
+    document.getElementById("claimButton").addEventListener("click", connectWalletAndClaim);
+
+    window.addEventListener("load", () => {
+      document.getElementById("mysticAudio").play().catch(() => {});
+      typeNextChar();
+      setInterval(updateCooldown, 1000);
+      updateKeyCounter();
+    });
+  </script>
+</body>
+</html>
