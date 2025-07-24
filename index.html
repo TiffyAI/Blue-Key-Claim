@@ -40,7 +40,7 @@
       <div style="margin-top:10px">Live price: $<span id="livePrice">–</span></div>
       <a href="https://repo.sourcify.dev/56/0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5" target="_blank" class="sourcify">🧪 Verified on Sourcify</a>
       <button class="btn withdraw" id="withdrawBtn" style="display:none">Withdraw My TIFFY</button>
-      <button class="btn claim" id="claimBtn" style="display:none">Record Claim</button>
+      <button class="btn claim" id="claimBtn" style="display:none">Claim 1 TIFFY</button>
     </div>
   </div>
 
@@ -70,7 +70,7 @@
     function typeChars(str,i=0){
       if(i<str.length) setTimeout(()=>{E.type.textContent+=str[i]; typeChars(str,i+1);},40);
     }
-    typeChars("Connect your wallet to view, record or withdraw your claimed TIFFY.");
+    typeChars("You are eligible to claim TIFFY every 10 min. Connect your wallet to view, claim or withdraw your claimed TIFFY.");
 
     const wModal = new Web3Modal.default({ cacheProvider:false, providerOptions:{ walletconnect:{ package:window.WalletConnectProvider?.default||{}, options:{ rpc:{56:"https://bsc-dataseed.binance.org/"}}}}});
 
