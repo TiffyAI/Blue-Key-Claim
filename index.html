@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>TiffyAI Claim & Withdraw</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+  <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{width:100%;height:100%;font-family:'Segoe UI',sans-serif;overflow:hidden;background:#000;color:#0ff}
+    #loadingScreen,#mainPortal{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;}
+    #loadingScreen{background:url('https://tiffyai.github.io/Blue-Key-Claim/lot6.jpg') no-repeat center center/cover;}
+    #typingText{font-size:24px;text-align:center;text-shadow:0 0 10px #0ff;margin:20px}
+    #connectBtn{margin-top:20px;padding:12px 30px;font-size:18px;border:none;border-radius:10px;background:linear-gradient(to right,#00f0ff,#4b6cb7);color:#fff;cursor:pointer;box-shadow:0 0 20px #0ff}
+    #mainPortal{display:none;background:url('TiffyAI -Treasury.jpg') center/cover}
+    .card{background:rgba(0,0,0,0.6);padding:20px;border:1px solid #0ff;border-radius:12px;text-align:center;max-width:400px;box-shadow:0 0 20px #0ff}
+    .card img{height:32px;vertical-align:middle;margin-right:8px}
+    .btn{margin-top:20px;padding:12px 25px;font-size:16px;border:none;border-radius:8px;cursor:pointer}
+    .withdraw{background:gold;color:#000;box-shadow:0 0 15px #ff0}
+    .claim{background:#4af0f8;color:#000;box-shadow:0 0 15px #0ff}
+    a.sourcify{display:block;color:#0ff;text-decoration:none;margin-top:15px;font-size:14px}
+    a.sourcify:hover{text-decoration:underline}
+
+    /* Popup styles from Tetris */
+    #confirmPopup {
+      display:none;
+      position:fixed;
+      top:0;left:0;width:100%;height:100%;
+      background:rgba(0,0,0,0.8);
+      justify-content:center;
+      align-items:center;
+      z-index:999;
+    }
+    .popup-content {
+      background:rgba(0,0,20,0.85);
+      padding:20px;
+      border-radius:15px;
+      box-shadow:0 0 30px #0ff;
+      text-align:center;
+      max-width:320px;
+      border:1px solid #0ff;
+      color:#0ff;
+    }
+    .popup-content h2 {
+      margin-bottom:10px;
+      text-shadow:0 0 10px #0ff;
+    }
+    .popup-content p {
+      margin:10px 0;
+      font-size:16px;
+    }
+    .popup-btn {
+      padding:10px 20px;
+      border:none;
+      margin:10px;
+      cursor:pointer;
+      border-radius:8px;
+      font-size:14px;
+      box-shadow:0 0 10px #0ff;
+    }
+    .confirm {
+      background:#0ff;color:#000;
+    }
+    .cancel {
+      background:#444;color:#fff;
+    }
+  </style>
+</head>
+<body>
+  <div id="loadingScreen">
+    <div id="typingText"></div>
+    <button id="connectBtn">Connect Wallet</button>
+  </div>
+
+  <div id="mainPortal">
+    <div class="card">
+      <div><strong>💼 Connected:</strong> <span id="walletAddress"></span></div>
+      <div style="margin-top:10px">
+        <img src="https://tiffyai.github.io/Blue-Key-Claim/TiffyAI-Token.png" alt="TIFFY"/>
+        <strong id="tiffyCount">0 TIFFY</strong> →
+        $<span id="usdValue">0.00</span>
+      </div>
+      <div style="margin-top:10px">Live price: $<span id="livePrice">–</span></div>
+      <a href="https://repo.sourcify.dev/56/0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5" target="_blank" class="sourcify">🧪 Verified on Sourcify</a>
+      <button class="btn withdraw" id="withdrawBtn" style="display:none">Withdraw My TIFFY</button>
+      <button class="btn claim" id="claimBtn" style="display:none">Claim 1 TIFFY</button>
+    </div>
+  </div>
+
+  <!-- Popup HTML -->
+  <div id="confirmPopup">
+    <div class="popup-content">
+      <h2>Confirm Withdrawal</h2>
+      <p>You are about to withdraw:</p>
+      <p><strong id="popupAmount">0 TIFFY</strong> (~$<span id="popupUSD">0.00</span>)</p>
+      <p>Proceed with the transaction?</p>
+      <button class="popup-btn confirm" id="popupConfirm">Yes, Withdraw</button>
+      <button class="popup-btn cancel" id="popupCancel">Cancel</button>
+    </div>
+  </div>
+
+  <audio id="claimSound" src="single-coin.wav" preload="auto"></audio>
+  <audio id="withdrawSound" src="withdraw.wav" preload="auto"></audio>
+
+  <script>
+  (async ()=>{
+    const cAddr = "0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5";
+    const ABI = [
+      {inputs:[],name:"claim",outputs:[],stateMutability:"payable",type:"function"},
+      {inputs:[],name:"FIXED_BNB_FEE",outputs:[{internalType:"uint256",name:"",type:"uint256"}],stateMutability:"view",type:"function"}
+    ];
+    const BACKEND = "https://tiffyai-wh-wa.onrender.com/reward";
+    let web3, provider, account, contract, fee;
+
+    const E = {
+      type: document.getElementById("typingText"),
+      connect: document.getElementById("connectBtn"),
+      load: document.getElementById("loadingScreen"),
+      portal: document.getElementById("mainPortal"),
+      wallet: document.getElementById("walletAddress"),
+      count: document.getElementById("tiffyCount"),
+      usd: document.getElementById("usdValue"),
+      live: document.getElementById("livePrice"),
+      withdraw: document.getElementById("withdrawBtn"),
+      claim: document.getElementById("claimBtn"),
+      claimSound: document.getElementById("claimSound"),
+      withdrawSound: document.getElementById("withdrawSound"),
+      popup: document.getElementById("confirmPopup"),
+      popupAmount: document.getElementById("popupAmount"),
+      popupUSD: document.getElementById("popupUSD"),
+      popupConfirm: document.getElementById("popupConfirm"),
+      popupCancel: document.getElementById("popupCancel")
+    };
+
+    function typeChars(str,i=0){
+      if(i<str.length) setTimeout(()=>{E.type.textContent+=str[i]; typeChars(str,i+1);},40);
+    }
+    typeChars("You are eligible to claim TIFFY every 10 min. Connect your wallet to view, claim or withdraw your claimed TIFFY.");
+
+    const wModal = new Web3Modal.default({ cacheProvider:false, providerOptions:{ walletconnect:{ package:window.WalletConnectProvider?.default||{}, options:{ rpc:{56:"https://bsc-dataseed.binance.org/"}}}}});
+
+    E.connect.onclick = async() => {
+      provider = await wModal.connect();
+      web3 = new Web3(provider);
+      const cid = await web3.eth.getChainId();
+
+      if(cid !== 56){
+        try { await provider.request({ method:"wallet_switchEthereumChain", params:[{chainId:"0x38"}] }); }
+        catch(e){
+          if(provider.isBitget || provider.isBitKeep){
+            try { await provider.request({ method:"wallet_addEthereumChain", params:[{chainId:"0x38",chainName:"BNB Smart Chain",rpcUrls:["https://bsc-dataseed.binance.org/"],nativeCurrency:{name:"BNB",symbol:"BNB",decimals:18},blockExplorerUrls:["https://bscscan.com"]}]});}
+            catch{alert("🌐 Bitget: please switch BSC manually."); return;}
+          } else { alert("❗ Please switch to BNB Smart Chain"); return; }
+        }
+      }
+
+      const accts = await web3.eth.getAccounts();
+      account = accts[0];
+      contract = new web3.eth.Contract(ABI, cAddr);
+      fee = await contract.methods.FIXED_BNB_FEE().call();
+
+      E.wallet.textContent = account;
+      E.load.style.display = "none";
+      E.portal.style.display = "flex";
+
+      setupUI();
+      fetchPrice();
+      setInterval(fetchPrice,60000);
+    };
+
+    function setupUI(){
+      const key = `tiffyClaimed_${account}`;
+      const cnt = parseInt(localStorage.getItem(key)||"0");
+      E.withdraw.style.display = cnt>0 ? "inline-block" : "none";
+      E.claim.style.display = "inline-block";
+      updateDisplay(cnt);
+
+      E.claim.onclick = ()=> {
+        const newCnt = cnt+1;
+        localStorage.setItem(key,newCnt);
+        updateDisplay(newCnt);
+        E.claimSound.play();
+      };
+
+      E.withdraw.onclick = showPopup;
+    }
+
+    function updateDisplay(cnt){
+      E.count.textContent = `${cnt} TIFFY`;
+      const price = parseFloat(E.live.textContent || 0);
+      E.usd.textContent = (cnt * price).toFixed(2);
+    }
+
+    async function fetchPrice(){
+      try {
+        const r = await fetch("/TIFFY-Market-Value/price.json");
+        const d = await r.json();
+        E.live.textContent = parseFloat(d.tiffyToUSD).toFixed(2);
+        const cnt = parseInt(localStorage.getItem(`tiffyClaimed_${account}`)||"0");
+        updateDisplay(cnt);
+      } catch(e){}
+    }
+
+    function showPopup(){
+      const key = `tiffyClaimed_${account}`;
+      let cnt = parseInt(localStorage.getItem(key)||"0");
+      if(cnt<=0) return;
+      const price = parseFloat(E.live.textContent || 0);
+      E.popupAmount.textContent = `${cnt} TIFFY`;
+      E.popupUSD.textContent = (cnt * price).toFixed(2);
+      E.popup.style.display = "flex";
+    }
+
+    E.popupCancel.onclick = () => { E.popup.style.display = "none"; };
+    E.popupConfirm.onclick = () => {
+      E.popup.style.display = "none";
+      withdraw();
+    };
+
+    async function withdraw(){
+      const key = `tiffyClaimed_${account}`;
+      let cnt = parseInt(localStorage.getItem(key)||"0");
+      if(cnt<=0)return;
+
+      E.withdraw.disabled=true;
+      E.withdraw.textContent="Processing...";
+      try {
+        await contract.methods.claim().send({ from:account, value:fee });
+        const backendAmt = cnt-1;
+        if(backendAmt > 0){
+          await fetch(BACKEND, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({wallet:account,amount:backendAmt}) });
+        }
+        localStorage.setItem(key,"0");
+        setupUI();
+        E.withdrawSound.play();
+        alert("✅ Withdrawal Complete!");
+      } catch(e){
+        console.error(e);
+        alert("❌ Withdraw failed: "+(e.message||e));
+        E.withdraw.disabled=false;
+        E.withdraw.textContent="Withdraw My TIFFY";
+      }
+    }
+  })();
+  </script>
+</body>
+</html>
