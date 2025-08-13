@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>TiffyAI Claim & Withdraw</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+  <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{width:100%;height:100%;font-family:'Segoe UI',sans-serif;overflow:hidden;background:#000;color:#0ff}
+    #loadingScreen,#mainPortal{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;}
+    #loadingScreen{background:url('https://tiffyai.github.io/Blue-Key-Claim/lot6.jpg') no-repeat center center/cover;}
+    #typingText{font-size:24px;text-align:center;text-shadow:0 0 10px #0ff;margin:20px}
+    #connectBtn{margin-top:20px;padding:12px 30px;font-size:18px;border:none;border-radius:10px;background:linear-gradient(to right,#00f0ff,#4b6cb7);color:#fff;cursor:pointer;box-shadow:0 0 20px #0ff}
+    #mainPortal{display:none;background:url('TiffyAI -Treasury.jpg') center/cover}
+    .card{background:rgba(0,0,0,0.6);padding:20px;border:1px solid #0ff;border-radius:12px;text-align:center;max-width:400px;box-shadow:0 0 20px #0ff}
+    .card img{height:32px;vertical-align:middle;margin-right:8px}
+    .btn{margin-top:20px;padding:12px 25px;font-size:16px;border:none;border-radius:8px;cursor:pointer}
+    .withdraw{background:gold;color:#000;box-shadow:0 0 15px #ff0}
+    .claim{background:#4af0f8;color:#000;box-shadow:0 0 15px #0ff}
+    a.sourcify{display:block;color:#0ff;text-decoration:none;margin-top:15px;font-size:14px}
+    a.sourcify:hover{text-decoration:underline}
+
+    /* Modal styles from index (1).html */
+    #feeModal {
+      position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.95); border: 2px solid #0ff; padding: 18px; border-radius: 10px; color: #0ff;
+      display: none; z-index: 2000; width: 90%; max-width: 420px; text-align: left; box-shadow: 0 0 30px rgba(0,255,255,0.08);
+    }
+    #feeModal h3 { margin-top:0; text-align:center; }
+    #feeModal .row { display:flex; justify-content:space-between; margin:8px 0; }
+    #feeModal .actions { display:flex; justify-content:space-between; gap:10px; margin-top:12px; }
+    #feeModal button { flex:1; padding:10px; border-radius:8px; border:none; font-weight:bold; cursor:pointer; }
+    #feeModal .cancel { background:#222; color:#fff; border:1px solid #444; }
+    #feeModal .confirm { background:linear-gradient(90deg,#00ffcc,#00aaff); color:#000; }
+    .badge { display:inline-block; padding:4px 8px; border-radius:8px; background:rgba(255,255,255,0.05); color:#0ff; font-weight:bold; }
+  </style>
+</head>
+<body>
+  <div id="loadingScreen">
+    <div id="typingText"></div>
+    <button id="connectBtn">Connect Wallet</button>
+  </div>
+
+  <div id="mainPortal">
+    <div class="card">
+      <div><strong>💼 Connected:</strong> <span id="walletAddress"></span></div>
+      <div style="margin-top:10px">
+        <img src="https://tiffyai.github.io/Blue-Key-Claim/TiffyAI-Token.png" alt="TIFFY"/>
+        <strong id="tiffyCount">0 TIFFY</strong> →
+        $<span id="usdValue">0.00</span>
+      </div>
+      <div style="margin-top:10px">Live price: $<span id="livePrice">–</span></div>
+      <a href="https://repo.sourcify.dev/56/0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5" target="_blank" class="sourcify">🧪 Verified on Sourcify</a>
+      <button class="btn withdraw" id="withdrawBtn" style="display:none">Withdraw My TIFFY</button>
+      <button class="btn claim" id="claimBtn" style="display:none">Claim 1 TIFFY</button>
+      <div id="cooldownTimer" style="margin-top:12px;font-size:18px;text-shadow:0 0 10px #0ff,0 0 20px #f0f;font-weight:bold;"></div>
+    </div>
+  </div>
+
+  <div id="feeModal" role="dialog" aria-modal="true">
+    <h3>Confirm Withdrawal</h3>
+    <div class="row"><div class="badge">Accumulated</div><div id="modalTiffy">- TIFFY</div></div>
+    <div class="row"><div>TIFFY USD</div><div id="modalTiffyUSD">-</div></div>
+    <div class="row"><div>TIFFY in BNB</div><div id="modalTiffyBNB">- BNB</div></div>
+    <hr style="border:0;border-top:1px solid rgba(0,255,255,0.06);margin:8px 0;">
+    <div class="row"><div>Contract fee</div><div id="modalContractFee">- BNB</div></div>
+    <div class="row"><div>Estimated network fee</div><div id="modalGasFee">- BNB</div></div>
+    <div class="row"><div><strong>Total estimate</strong></div><div id="modalTotal">- BNB</div></div>
+    <div class="row"><div>Approx USD</div><div id="modalUSD">-</div></div>
+    <div style="font-size:12px;margin-top:8px;color:#aaffff;">This is an estimate. Wallet will show final gas before you confirm.</div>
+    <div class="actions">
+      <button class="cancel" id="feeCancel">Cancel</button>
+      <button class="confirm" id="feeConfirm">Proceed</button>
+    </div>
+  </div>
+
+  <audio id="claimSound" src="single-coin.wav" preload="auto"></audio>
+  <audio id="withdrawSound" src="withdraw.wav" preload="auto"></audio>
+
+  <script>
+  (async ()=>{
+    const cAddr = "0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5";
+    const ABI = [
+      {inputs:[],name:"claim",outputs:[],stateMutability:"payable",type:"function"},
+      {inputs:[],name:"FIXED_BNB_FEE",outputs:[{internalType:"uint256",name:"",type:"uint256"}],stateMutability:"view",type:"function"},
+      {inputs:[{internalType:"address",name:"",type:"address"}],name:"lastClaimed",outputs:[{internalType:"uint256",name:"",type:"uint256"}],stateMutability:"view",type:"function"}
+    ];
+    const BACKEND = "https://tiffyai-wh-wa.onrender.com/reward";
+    const PRICE_JSON_PATH = "/TIFFY-Market-Value/price.json";
+    let web3, provider, account, contract, fee;
+
+    const E = {
+      type: document.getElementById("typingText"),
+      connect: document.getElementById("connectBtn"),
+      load: document.getElementById("loadingScreen"),
+      portal: document.getElementById("mainPortal"),
+      wallet: document.getElementById("walletAddress"),
+      count: document.getElementById("tiffyCount"),
+      usd: document.getElementById("usdValue"),
+      live: document.getElementById("livePrice"),
+      withdraw: document.getElementById("withdrawBtn"),
+      claim: document.getElementById("claimBtn"),
+      claimSound: document.getElementById("claimSound"),
+      withdrawSound: document.getElementById("withdrawSound"),
+      cooldown: document.getElementById("cooldownTimer")
+    };
+
+    // Modal elements
+    const feeModal = document.getElementById("feeModal");
+    const modalTiffy = document.getElementById("modalTiffy");
+    const modalTiffyUSD = document.getElementById("modalTiffyUSD");
+    const modalTiffyBNB = document.getElementById("modalTiffyBNB");
+    const modalContractFee = document.getElementById("modalContractFee");
+    const modalGasFee = document.getElementById("modalGasFee");
+    const modalTotal = document.getElementById("modalTotal");
+    const modalUSD = document.getElementById("modalUSD");
+    const feeCancel = document.getElementById("feeCancel");
+    const feeConfirm = document.getElementById("feeConfirm");
+
+    function typeChars(str,i=0){
+      if(i<str.length) setTimeout(()=>{E.type.textContent+=str[i]; typeChars(str,i+1);},40);
+    }
+    typeChars("You are eligible to claim TIFFY every 10 min. Connect your wallet to view, claim or withdraw your claimed TIFFY.");
+
+    const wModal = new Web3Modal.default({ cacheProvider:false, providerOptions:{ walletconnect:{ package:window.WalletConnectProvider?.default||{}, options:{ rpc:{56:"https://bsc-dataseed.binance.org/"}}}}});
+
+    E.connect.onclick = async() => {
+      try {
+        provider = await wModal.connect();
+        web3 = new Web3(provider);
+        const cid = await web3.eth.getChainId();
+
+        if(cid !== 56){
+          try { await provider.request({ method:"wallet_switchEthereumChain", params:[{chainId:"0x38"}] }); }
+          catch(e){
+            if(provider.isBitget || provider.isBitKeep){
+              try { await provider.request({ method:"wallet_addEthereumChain", params:[{chainId:"0x38",chainName:"BNB Smart Chain",rpcUrls:["https://bsc-dataseed.binance.org/"],nativeCurrency:{name:"BNB",symbol:"BNB",decimals:18},blockExplorerUrls:["https://bscscan.com"]}]});}
+              catch{alert("🌐 Bitget: please switch BSC manually."); return;}
+            } else { alert("❗ Please switch to BNB Smart Chain"); return; }
+          }
+        }
+
+        const accts = await web3.eth.getAccounts();
+        account = accts[0];
+        contract = new web3.eth.Contract(ABI, cAddr);
+        fee = await contract.methods.FIXED_BNB_FEE().call();
+
+        E.wallet.textContent = account;
+        E.load.style.display = "none";
+        E.portal.style.display = "flex";
+
+        setupUI();
+        fetchPrice();
+        setInterval(fetchPrice,60000);
+      } catch (err) {
+        alert("❌ Wallet connection failed: " + (err && err.message ? err.message : err));
+      }
+    };
+
+    function setupUI(){
+      const key = `tiffyClaimed_${account}`;
+      const lastKey = `lastClaimTime_${account}`;
+      let cnt = parseInt(localStorage.getItem(key)||"0");
+      E.withdraw.style.display = cnt > 0 ? "inline-block" : "none";
+      E.claim.style.display = "inline-block";
+      updateDisplay(cnt);
+
+      function updateTimer() {
+        const last = parseInt(localStorage.getItem(lastKey) || "0");
+        const now = Date.now();
+        const diff = now - last;
+        const cooldownMs = 10 * 60 * 1000; // 10 minutes
+        const remain = cooldownMs - diff;
+        if (remain > 0) {
+          const m = String(Math.floor(remain / 60000)).padStart(2,"0");
+          const s = String(Math.floor((remain % 60000) / 1000)).padStart(2,"0");
+          E.cooldown.textContent = `⏳ Cooldown: ${m}:${s}`;
+          E.claim.disabled = true;
+          E.claim.textContent = "ON COOLDOWN";
+        } else {
+          E.cooldown.textContent = "✅ Ready to claim!";
+          E.claim.disabled = false;
+          E.claim.textContent = "Claim 1 TIFFY";
+        }
+      }
+
+      updateTimer();
+      clearInterval(window.cooldownInterval);
+      window.cooldownInterval = setInterval(updateTimer, 1000);
+
+      E.claim.onclick = ()=> {
+        const last = parseInt(localStorage.getItem(lastKey) || "0");
+        if (Date.now() - last < 10 * 60 * 1000) return; // still cooling down
+        cnt = cnt+1;
+        localStorage.setItem(key,cnt);
+        localStorage.setItem(lastKey, Date.now());
+        updateDisplay(cnt);
+        E.claimSound.play();
+        updateTimer();
+      };
+
+      E.withdraw.onclick = withdraw;
+    }
+
+    function updateDisplay(cnt){
+      E.count.textContent = `${cnt} TIFFY`;
+      const price = parseFloat(E.live.textContent || 0);
+      E.usd.textContent = (cnt * price).toFixed(2);
+      if (contract && account) {
+        contract.methods.lastClaimed(account).call().then(last => {
+          const now = Math.floor(Date.now() / 1000);
+          const ready = now >= parseInt(last || 0) + 86400; // 24 hours
+          E.withdraw.disabled = !ready || cnt <= 0;
+          if (!ready) E.withdraw.textContent = "ON COOLDOWN";
+          else E.withdraw.textContent = "WITHDRAW";
+        }).catch(()=>{});
+      }
+    }
+
+    async function fetchPrice(){
+      try {
+        const r = await fetch(PRICE_JSON_PATH);
+        const d = await r.json();
+        E.live.textContent = parseFloat(d.tiffyToUSD).toFixed(2);
+        const cnt = parseInt(localStorage.getItem(`tiffyClaimed_${account}`)||"0");
+        updateDisplay(cnt);
+      } catch(e){
+        E.live.textContent = "-";
+      }
+    }
+
+    function getAccumulatedTiffy(addr) {
+      const key = `tiffyClaimed_${addr}`;
+      return parseInt(localStorage.getItem(key) || "0");
+    }
+
+    async function fetchTiffyPriceUSD() {
+      try {
+        const resp = await fetch(PRICE_JSON_PATH, {cache:'no-store'});
+        const data = await resp.json();
+        const price = parseFloat(data.tiffyToUSD);
+        if (!isNaN(price)) return price;
+      } catch (e) { }
+      return null;
+    }
+
+    async function fetchBNBPriceUSD() {
+      try {
+        const resp = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=binancecoin&vs_currencies=usd");
+        const data = await resp.json();
+        return parseFloat(data.binancecoin.usd);
+      } catch (e) { return null; }
+    }
+
+    async function preConfirmAndSend() {
+      if (!account || !contract) { alert("Connect wallet first."); return false; }
+      
+      const accumulated = getAccumulatedTiffy(account) || 0;
+      if (accumulated <= 0) { alert("You have no TIFFY to withdraw."); return false; }
+
+      try { fee = await contract.methods.FIXED_BNB_FEE().call(); } catch(e){ fee = null; }
+
+      let estimatedGas = 150000;
+      let gasPrice = await web3.eth.getGasPrice().catch(()=>null);
+      try {
+        estimatedGas = await contract.methods.claim().estimateGas({ from: account, value: fee || 0 });
+      } catch (err) {}
+      if(!gasPrice) gasPrice = "20000000000"; 
+
+      const gasBNIWei = BigInt(estimatedGas) * BigInt(gasPrice);
+      const gasBNB = parseFloat(web3.utils.fromWei(gasBNIWei.toString(), "ether"));
+      const feeBNB = fee ? parseFloat(web3.utils.fromWei(fee.toString(), "ether")) : 0;
+      const totalBNB = feeBNB + gasBNB;
+
+      const tiffyUSD = await fetchTiffyPriceUSD();
+      const bnbUSD = await fetchBNBPriceUSD();
+      const tiffyUsdVal = tiffyUSD ? (accumulated * tiffyUSD) : null;
+      const tiffyInBNB = (tiffyUsdVal && bnbUSD) ? (tiffyUsdVal / bnbUSD) : null;
+
+      modalTiffy.textContent = accumulated + " TIFFY";
+      modalTiffyUSD.textContent = tiffyUsdVal !== null ? ("$" + tiffyUsdVal.toFixed(2)) : "-";
+      modalTiffyBNB.textContent = tiffyInBNB !== null ? tiffyInBNB.toFixed(6) + " BNB" : "-";
+      modalContractFee.textContent = feeBNB.toFixed(6) + " BNB";
+      modalGasFee.textContent = gasBNB.toFixed(6) + " BNB";
+      modalTotal.textContent = totalBNB.toFixed(6) + " BNB";
+      modalUSD.textContent = "$" + ((totalBNB * (bnbUSD || 0)).toFixed(2) || "0.00");
+      feeModal.style.display = "block";
+
+      return new Promise(resolve => {
+        feeCancel.onclick = ()=> { feeModal.style.display = "none"; resolve(false); };
+        feeConfirm.onclick = async ()=> {
+          feeModal.style.display = "none";
+          try {
+            const tx = await contract.methods.claim().send({ from: account, value: fee });
+            if (tx && tx.status) {
+              localStorage.setItem(`tiffyClaimed_${account}`, "0");
+              E.withdrawSound.play();
+              setupUI();
+            }
+          } catch (err) {
+            alert("❌ Transaction failed: " + (err && err.message ? err.message : err));
+          }
+          resolve(true);
+        };
+      });
+    }
+
+    function withdraw(){
+      preConfirmAndSend();
+    }
+  })();
+  </script>
+</body>
+</html>
