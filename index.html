@@ -1,316 +1,385 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <title>TiffyAI Claim & Withdraw</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta charset="utf-8" />
+  <title>TiffyAI Presale — Checkout</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
-  <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
   <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    html,body{width:100%;height:100%;font-family:'Segoe UI',sans-serif;overflow:hidden;background:#000;color:#0ff}
-    #loadingScreen,#mainPortal{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;}
-    #loadingScreen{background:url('https://tiffyai.github.io/Blue-Key-Claim/lot6.jpg') no-repeat center center/cover;}
-    #typingText{font-size:24px;text-align:center;text-shadow:0 0 10px #0ff;margin:20px}
-    #connectBtn{margin-top:20px;padding:12px 30px;font-size:18px;border:none;border-radius:10px;background:linear-gradient(to right,#00f0ff,#4b6cb7);color:#fff;cursor:pointer;box-shadow:0 0 20px #0ff}
-    #mainPortal{display:none;background:url('TiffyAI -Treasury.jpg') center/cover}
-    .card{background:rgba(0,0,0,0.6);padding:20px;border:1px solid #0ff;border-radius:12px;text-align:center;max-width:400px;box-shadow:0 0 20px #0ff}
-    .card img{height:32px;vertical-align:middle;margin-right:8px}
-    .btn{margin-top:20px;padding:12px 25px;font-size:16px;border:none;border-radius:8px;cursor:pointer}
-    .withdraw{background:gold;color:#000;box-shadow:0 0 15px #ff0}
-    .claim{background:#4af0f8;color:#000;box-shadow:0 0 15px #0ff}
-    a.sourcify{display:block;color:#0ff;text-decoration:none;margin-top:15px;font-size:14px}
-    a.sourcify:hover{text-decoration:underline}
-
-    /* Modal styles from index (1).html */
-    #feeModal {
-      position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
-      background: rgba(0,0,0,0.95); border: 2px solid #0ff; padding: 18px; border-radius: 10px; color: #0ff;
-      display: none; z-index: 2000; width: 90%; max-width: 420px; text-align: left; box-shadow: 0 0 30px rgba(0,255,255,0.08);
+    :root {
+      --accent1: #00f0ff;
+      --accent2: #ff00d4;
+      --glass: rgba(255,255,255,0.06);
+      --glass-border: rgba(255,255,255,0.12);
+      --muted: rgba(255,255,255,0.85);
     }
-    #feeModal h3 { margin-top:0; text-align:center; }
-    #feeModal .row { display:flex; justify-content:space-between; margin:8px 0; }
-    #feeModal .actions { display:flex; justify-content:space-between; gap:10px; margin-top:12px; }
-    #feeModal button { flex:1; padding:10px; border-radius:8px; border:none; font-weight:bold; cursor:pointer; }
-    #feeModal .cancel { background:#222; color:#fff; border:1px solid #444; }
-    #feeModal .confirm { background:linear-gradient(90deg,#00ffcc,#00aaff); color:#000; }
-    .badge { display:inline-block; padding:4px 8px; border-radius:8px; background:rgba(255,255,255,0.05); color:#0ff; font-weight:bold; }
+    body {
+      margin: 0;
+      font-family: Inter, Poppins, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+      background: url('Presale1.jpg') center/cover fixed no-repeat;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 18px;
+    }
+    .wrap {
+      width: 100%;
+      max-width: 820px;
+      border-radius: 16px;
+      padding: 22px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.18));
+      border: 1px solid rgba(255,255,255,0.04);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+    }
+    .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo { width: 64px; height: 64px; border-radius: 12px; background: linear-gradient(135deg, var(--accent1), var(--accent2)); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; color: #001; }
+    h1 { margin: 0; font-size: 20px; }
+    p.lead { margin: 4px 0 0 0; opacity: 0.95; font-size: 13px; }
+    .controls { display: flex; gap: 12px; margin-top: 18px; flex-wrap: wrap; align-items: center; justify-content: center; }
+    select, input[type="number"] {
+      padding: 12px; border-radius: 10px; border: none; background: rgba(255,255,255,0.04); color: var(--muted); font-size: 16px; min-width: 170px;
+    }
+    .btn {
+      padding: 12px 18px; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; font-size: 16px;
+    }
+    .connect { background: rgba(255,255,255,0.06); color: #fff; }
+    .buy { background: linear-gradient(135deg, var(--accent1), var(--accent2)); color: #062; }
+    #amountDisplay { margin-top: 14px; text-align: center; font-weight: 800; color: var(--accent1); font-size: 18px; }
+    .modal {
+      position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+      width: 96%; max-width: 520px; border-radius: 14px; padding: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border: 1px solid var(--glass-border); backdrop-filter: blur(10px); box-shadow: 0 30px 80px rgba(0,0,0,0.7);
+      z-index: 1000; display: none;
+    }
+    .modal.show { display: block; }
+    .addr { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; font-size: 18px; padding: 14px; background: rgba(0,0,0,0.3); border-radius: 12px; word-break: break-all; color: #e8fbff; }
+    .row { display: flex; justify-content: space-between; margin: 8px 0; }
+    .actions { display: flex; gap: 10px; margin-top: 12px; justify-content: space-between; }
+    .copy, .cancel, .proceed { padding: 10px 12px; border-radius: 10px; border: none; cursor: pointer; font-weight: bold; }
+    .copy { background: rgba(255,255,255,0.04); }
+    .cancel { background: #222; color: #fff; border: 1px solid #444; }
+    .proceed { background: linear-gradient(90deg, #00ffcc, #00aaff); color: #000; }
+    .qr { width: 120px; height: 120px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.02); font-size: 12px; color: rgba(255,255,255,0.6); }
+    .muted { color: rgba(255,255,255,0.75); font-size: 13px; margin-top: 8px; text-align: center; }
+    @media (max-width: 520px) {
+      .logo { width: 56px; height: 56px; }
+      .addr { font-size: 20px; padding: 18px; }
+      .qr { width: 136px; height: 136px; }
+      .modal { padding: 16px; border-radius: 12px; }
+      .btn { font-size: 16px; padding: 12px 14px; }
+    }
   </style>
 </head>
 <body>
-  <div id="loadingScreen">
-    <div id="typingText"></div>
-    <button id="connectBtn">Connect Wallet</button>
-  </div>
-
-  <div id="mainPortal">
-    <div class="card">
-      <div><strong>💼 Connected:</strong> <span id="walletAddress"></span></div>
-      <div style="margin-top:10px">
-        <img src="https://tiffyai.github.io/Blue-Key-Claim/TiffyAI-Token.png" alt="TIFFY"/>
-        <strong id="tiffyCount">0 TIFFY</strong> →
-        $<span id="usdValue">0.00</span>
+  <div class="wrap">
+    <div class="header">
+      <div class="brand">
+        <div class="logo">TI</div>
+        <div>
+          <h1>TiffyAI — Presale Checkout</h1>
+          <p class="lead">Buy TIFFY tokens — $1 presale (0.001 BNB per token)</p>
+        </div>
       </div>
-      <div style="margin-top:10px">Live price: $<span id="livePrice">–</span></div>
-      <a href="https://repo.sourcify.dev/56/0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5" target="_blank" class="sourcify">🧪 Verified on Sourcify</a>
-      <button class="btn withdraw" id="withdrawBtn" style="display:none">Withdraw My TIFFY</button>
-      <button class="btn claim" id="claimBtn" style="display:none">Claim 1 TIFFY</button>
-      <div id="cooldownTimer" style="margin-top:12px;font-size:18px;text-shadow:0 0 10px #0ff,0 0 20px #f0f;font-weight:bold;"></div>
+      <div id="userMeta" style="text-align: right;">
+        <div id="addrDisplay">Not connected</div>
+        <div id="statusSmall" style="font-size: 12px; opacity: 0.85;">Ready</div>
+      </div>
     </div>
+    <div class="controls">
+      <select id="currency">
+        <option value="BNB">BNB (native)</option>
+        <option value="USDT">USDT (BEP-20)</option>
+        <option value="BTCB">BTCB (BEP-20)</option>
+      </select>
+      <input id="qty" type="number" min="1" value="1" />
+      <button id="connectBtn" class="btn connect">Connect Wallet</button>
+      <button id="buyBtn" class="btn buy">Create Invoice</button>
+    </div>
+    <div id="amountDisplay">Total: 0.001 BNB</div>
+    <div class="muted">Select amount and currency, then create an invoice to pay.</div>
   </div>
-
-  <div id="feeModal" role="dialog" aria-modal="true">
-    <h3>Confirm Withdrawal</h3>
-    <div class="row"><div class="badge">Accumulated</div><div id="modalTiffy">- TIFFY</div></div>
-    <div class="row"><div>TIFFY USD</div><div id="modalTiffyUSD">-</div></div>
-    <div class="row"><div>TIFFY in BNB</div><div id="modalTiffyBNB">- BNB</div></div>
-    <hr style="border:0;border-top:1px solid rgba(0,255,255,0.06);margin:8px 0;">
-    <div class="row"><div>Contract fee</div><div id="modalContractFee">- BNB</div></div>
-    <div class="row"><div>Estimated network fee</div><div id="modalGasFee">- BNB</div></div>
-    <div class="row"><div><strong>Total estimate</strong></div><div id="modalTotal">- BNB</div></div>
-    <div class="row"><div>Approx USD</div><div id="modalUSD">-</div></div>
-    <div style="font-size:12px;margin-top:8px;color:#aaffff;">This is an estimate. Wallet will show final gas before you confirm.</div>
+  <div id="payModal" class="modal" role="dialog" aria-hidden="true">
+    <h3>Confirm Payment</h3>
+    <div class="row"><div>Tokens</div><div id="modalQty">-</div></div>
+    <div class="row"><div>Currency</div><div id="modalCurrency">-</div></div>
+    <div class="row"><div>Amount</div><div idBoebert="modalAmount">-</div></div>
+    <div class="row"><div>USD Value</div><div id="modalUSD">-</div></div>
+    <div class="row"><div>Pay to Address</div><div id="modalAddress" class="addr">-</div></div>
+    <div class="row"><div>QR Code</div><div class="qr" id="qrPlaceholder">QR</div></div>
+    <div class="muted" id="modalExpires">Invoice expires in: -</div>
     <div class="actions">
-      <button class="cancel" id="feeCancel">Cancel</button>
-      <button class="confirm" id="feeConfirm">Proceed</button>
+      <button class="copy" id="copyAddr">Copy Address</button>
+      <button class="copy" id="copyAmount">Copy Amount</button>
+      <button class="cancel" id="cancelBtn">Cancel</button>
+      <button class="proceed" id="proceedBtn">Proceed with Payment</button>
     </div>
   </div>
-
-  <audio id="claimSound" src="single-coin.wav" preload="auto"></audio>
-  <audio id="withdrawSound" src="withdraw.wav" preload="auto"></audio>
-
   <script>
-  (async ()=>{
-    const cAddr = "0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5";
-    const ABI = [
-      {inputs:[],name:"claim",outputs:[],stateMutability:"payable",type:"function"},
-      {inputs:[],name:"FIXED_BNB_FEE",outputs:[{internalType:"uint256",name:"",type:"uint256"}],stateMutability:"view",type:"function"},
-      {inputs:[{internalType:"address",name:"",type:"address"}],name:"lastClaimed",outputs:[{internalType:"uint256",name:"",type:"uint256"}],stateMutability:"view",type:"function"}
-    ];
-    const BACKEND = "https://tiffyai-wh-wa.onrender.com/reward";
-    const PRICE_JSON_PATH = "/TIFFY-Market-Value/price.json";
-    let web3, provider, account, contract, fee;
+    const API_BASE = 'https://your-actual-backend.com'; // REPLACE WITH YOUR BACKEND URL
+    let web3, account;
 
-    const E = {
-      type: document.getElementById("typingText"),
-      connect: document.getElementById("connectBtn"),
-      load: document.getElementById("loadingScreen"),
-      portal: document.getElementById("mainPortal"),
-      wallet: document.getElementById("walletAddress"),
-      count: document.getElementById("tiffyCount"),
-      usd: document.getElementById("usdValue"),
-      live: document.getElementById("livePrice"),
-      withdraw: document.getElementById("withdrawBtn"),
-      claim: document.getElementById("claimBtn"),
-      claimSound: document.getElementById("claimSound"),
-      withdrawSound: document.getElementById("withdrawSound"),
-      cooldown: document.getElementById("cooldownTimer")
-    };
-
-    // Modal elements
-    const feeModal = document.getElementById("feeModal");
-    const modalTiffy = document.getElementById("modalTiffy");
-    const modalTiffyUSD = document.getElementById("modalTiffyUSD");
-    const modalTiffyBNB = document.getElementById("modalTiffyBNB");
-    const modalContractFee = document.getElementById("modalContractFee");
-    const modalGasFee = document.getElementById("modalGasFee");
-    const modalTotal = document.getElementById("modalTotal");
-    const modalUSD = document.getElementById("modalUSD");
-    const feeCancel = document.getElementById("feeCancel");
-    const feeConfirm = document.getElementById("feeConfirm");
-
-    function typeChars(str,i=0){
-      if(i<str.length) setTimeout(()=>{E.type.textContent+=str[i]; typeChars(str,i+1);},40);
-    }
-    typeChars("You are eligible to claim TIFFY every 10 min. Connect your wallet to view, claim or withdraw your claimed TIFFY.");
-
-    const wModal = new Web3Modal.default({ cacheProvider:false, providerOptions:{ walletconnect:{ package:window.WalletConnectProvider?.default||{}, options:{ rpc:{56:"https://bsc-dataseed.binance.org/"}}}}});
-
-    E.connect.onclick = async() => {
-      try {
-        provider = await wModal.connect();
-        web3 = new Web3(provider);
-        const cid = await web3.eth.getChainId();
-
-        if(cid !== 56){
-          try { await provider.request({ method:"wallet_switchEthereumChain", params:[{chainId:"0x38"}] }); }
-          catch(e){
-            if(provider.isBitget || provider.isBitKeep){
-              try { await provider.request({ method:"wallet_addEthereumChain", params:[{chainId:"0x38",chainName:"BNB Smart Chain",rpcUrls:["https://bsc-dataseed.binance.org/"],nativeCurrency:{name:"BNB",symbol:"BNB",decimals:18},blockExplorerUrls:["https://bscscan.com"]}]});}
-              catch{alert("🌐 Bitget: please switch BSC manually."); return;}
-            } else { alert("❗ Please switch to BNB Smart Chain"); return; }
-          }
-        }
-
-        const accts = await web3.eth.getAccounts();
-        account = accts[0];
-        contract = new web3.eth.Contract(ABI, cAddr);
-        fee = await contract.methods.FIXED_BNB_FEE().call();
-
-        E.wallet.textContent = account;
-        E.load.style.display = "none";
-        E.portal.style.display = "flex";
-
-        setupUI();
-        fetchPrice();
-        setInterval(fetchPrice,60000);
-      } catch (err) {
-        alert("❌ Wallet connection failed: " + (err && err.message ? err.message : err));
-      }
-    };
-
-    function setupUI(){
-      const key = `tiffyClaimed_${account}`;
-      const lastKey = `lastClaimTime_${account}`;
-      let cnt = parseInt(localStorage.getItem(key)||"0");
-      E.withdraw.style.display = cnt > 0 ? "inline-block" : "none";
-      E.claim.style.display = "inline-block";
-      updateDisplay(cnt);
-
-      function updateTimer() {
-        const last = parseInt(localStorage.getItem(lastKey) || "0");
-        const now = Date.now();
-        const diff = now - last;
-        const cooldownMs = 10 * 60 * 1000; // 10 minutes
-        const remain = cooldownMs - diff;
-        if (remain > 0) {
-          const m = String(Math.floor(remain / 60000)).padStart(2,"0");
-          const s = String(Math.floor((remain % 60000) / 1000)).padStart(2,"0");
-          E.cooldown.textContent = `⏳ Cooldown: ${m}:${s}`;
-          E.claim.disabled = true;
-          E.claim.textContent = "ON COOLDOWN";
-        } else {
-          E.cooldown.textContent = "✅ Ready to claim!";
-          E.claim.disabled = false;
-          E.claim.textContent = "Claim 1 TIFFY";
-        }
-      }
-
-      updateTimer();
-      clearInterval(window.cooldownInterval);
-      window.cooldownInterval = setInterval(updateTimer, 1000);
-
-      E.claim.onclick = ()=> {
-        const last = parseInt(localStorage.getItem(lastKey) || "0");
-        if (Date.now() - last < 10 * 60 * 1000) return; // still cooling down
-        cnt = cnt+1;
-        localStorage.setItem(key,cnt);
-        localStorage.setItem(lastKey, Date.now());
-        updateDisplay(cnt);
-        E.claimSound.play();
-        updateTimer();
-      };
-
-      E.withdraw.onclick = withdraw;
-    }
-
-    function updateDisplay(cnt){
-      E.count.textContent = `${cnt} TIFFY`;
-      const price = parseFloat(E.live.textContent || 0);
-      E.usd.textContent = (cnt * price).toFixed(2);
-      if (contract && account) {
-        contract.methods.lastClaimed(account).call().then(last => {
-          const now = Math.floor(Date.now() / 1000);
-          const ready = now >= parseInt(last || 0) + 86400; // 24 hours
-          E.withdraw.disabled = !ready || cnt <= 0;
-          if (!ready) E.withdraw.textContent = "ON COOLDOWN";
-          else E.withdraw.textContent = "WITHDRAW";
-        }).catch(()=>{});
-      }
-    }
-
-    async function fetchPrice(){
-      try {
-        const r = await fetch(PRICE_JSON_PATH);
-        const d = await r.json();
-        E.live.textContent = parseFloat(d.tiffyToUSD).toFixed(2);
-        const cnt = parseInt(localStorage.getItem(`tiffyClaimed_${account}`)||"0");
-        updateDisplay(cnt);
-      } catch(e){
-        E.live.textContent = "-";
-      }
-    }
-
-    function getAccumulatedTiffy(addr) {
-      const key = `tiffyClaimed_${addr}`;
-      return parseInt(localStorage.getItem(key) || "0");
-    }
-
-    async function fetchTiffyPriceUSD() {
-      try {
-        const resp = await fetch(PRICE_JSON_PATH, {cache:'no-store'});
-        const data = await resp.json();
-        const price = parseFloat(data.tiffyToUSD);
-        if (!isNaN(price)) return price;
-      } catch (e) { }
-      return null;
-    }
+    const currencyEl = document.getElementById('currency');
+    const qtyEl = document.getElementById('qty');
+    const connectBtn = document.getElementById('connectBtn');
+    const buyBtn = document.getElementById('buyBtn');
+    const amountDisplay = document.getElementById('amountDisplay');
+    const addrDisplay = document.getElementById('addrDisplay');
+    const statusSmall = document.getElementById('statusSmall');
+    const payModal = document.getElementById('payModal');
+    const modalQty = document.getElementById('modalQty');
+    const modalCurrency = document.getElementById('modalCurrency');
+    const modalAmount = document.getElementById('modalAmount');
+    const modalUSD = document.getElementById('modalUSD');
+    const modalAddress = document.getElementById('modalAddress');
+    const modalExpires = document.getElementById('modalExpires');
+    const qrPlaceholder = document.getElementById('qrPlaceholder');
+    const copyAddr = document.getElementById('copyAddr');
+    const copyAmount = document.getElementById('copyAmount');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const proceedBtn = document.getElementById('proceedBtn');
 
     async function fetchBNBPriceUSD() {
       try {
-        const resp = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=binancecoin&vs_currencies=usd");
+        const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=binancecoin&vs_currencies=usd');
         const data = await resp.json();
         return parseFloat(data.binancecoin.usd);
-      } catch (e) { return null; }
+      } catch {
+        return null;
+      }
     }
 
-    async function preConfirmAndSend() {
-      if (!account || !contract) { alert("Connect wallet first."); return false; }
-      
-      const accumulated = getAccumulatedTiffy(account) || 0;
-      if (accumulated <= 0) { alert("You have no TIFFY to withdraw."); return false; }
+    function updateAmount() {
+      const qty = Math.max(1, parseInt(qtyEl.value) || 1);
+      const cur = currencyEl.value;
+      const prices = { BNB: 0.001, USDT: 1.0, BTCB: 0.000014 };
+      const total = qty * (prices[cur] || 0);
+      const fmt = cur === 'USDT' ? total.toFixed(2) : total.toFixed(6);
+      amountDisplay.innerText = `Total: ${fmt} ${cur}`;
+    }
+    currencyEl.addEventListener('change', updateAmount);
+    qtyEl.addEventListener('input', updateAmount);
+    updateAmount();
 
-      try { fee = await contract.methods.FIXED_BNB_FEE().call(); } catch(e){ fee = null; }
-
-      let estimatedGas = 150000;
-      let gasPrice = await web3.eth.getGasPrice().catch(()=>null);
+    connectBtn.addEventListener('click', async () => {
+      if (typeof window.ethereum === 'undefined') {
+        alert('Please install MetaMask or a Web3 wallet.');
+        return;
+      }
       try {
-        estimatedGas = await contract.methods.claim().estimateGas({ from: account, value: fee || 0 });
-      } catch (err) {}
-      if(!gasPrice) gasPrice = "20000000000"; 
-
-      const gasBNIWei = BigInt(estimatedGas) * BigInt(gasPrice);
-      const gasBNB = parseFloat(web3.utils.fromWei(gasBNIWei.toString(), "ether"));
-      const feeBNB = fee ? parseFloat(web3.utils.fromWei(fee.toString(), "ether")) : 0;
-      const totalBNB = feeBNB + gasBNB;
-
-      const tiffyUSD = await fetchTiffyPriceUSD();
-      const bnbUSD = await fetchBNBPriceUSD();
-      const tiffyUsdVal = tiffyUSD ? (accumulated * tiffyUSD) : null;
-      const tiffyInBNB = (tiffyUsdVal && bnbUSD) ? (tiffyUsdVal / bnbUSD) : null;
-
-      modalTiffy.textContent = accumulated + " TIFFY";
-      modalTiffyUSD.textContent = tiffyUsdVal !== null ? ("$" + tiffyUsdVal.toFixed(2)) : "-";
-      modalTiffyBNB.textContent = tiffyInBNB !== null ? tiffyInBNB.toFixed(6) + " BNB" : "-";
-      modalContractFee.textContent = feeBNB.toFixed(6) + " BNB";
-      modalGasFee.textContent = gasBNB.toFixed(6) + " BNB";
-      modalTotal.textContent = totalBNB.toFixed(6) + " BNB";
-      modalUSD.textContent = "$" + ((totalBNB * (bnbUSD || 0)).toFixed(2) || "0.00");
-      feeModal.style.display = "block";
-
-      return new Promise(resolve => {
-        feeCancel.onclick = ()=> { feeModal.style.display = "none"; resolve(false); };
-        feeConfirm.onclick = async ()=> {
-          feeModal.style.display = "none";
+        web3 = new Web3(window.ethereum);
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        account = accounts[0];
+        const chainId = await web3.eth.getChainId();
+        if (chainId !== 56) {
           try {
-            const tx = await contract.methods.claim().send({ from: account, value: fee });
-            if (tx && tx.status) {
-              localStorage.setItem(`tiffyClaimed_${account}`, "0");
-              E.withdrawSound.play();
-              setupUI();
-            }
-          } catch (err) {
-            alert("❌ Transaction failed: " + (err && err.message ? err.message : err));
+            await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x38' }] });
+          } catch {
+            alert('Please switch to BNB Smart Chain.');
+            return;
           }
-          resolve(true);
-        };
-      });
+        }
+        addrDisplay.innerText = `Connected: ${account.slice(0, 6)}...${account.slice(-4)}`;
+        statusSmall.innerText = 'Wallet connected';
+        connectBtn.innerText = 'Connected';
+      } catch (e) {
+        alert('Wallet connect failed: ' + (e.message || e));
+      }
+    });
+
+    buyBtn.addEventListener('click', async () => {
+      if (!account) {
+        const ok = confirm('Connect wallet to continue?');
+        if (!ok) return;
+        await connectBtn.click();
+        if (!account) return;
+      }
+
+      const currency = currencyEl.value;
+      const qty = Math.max(1, parseInt(qtyEl.value) || 1);
+      try {
+        buyBtn.disabled = true;
+        statusSmall.innerText = 'Creating invoice...';
+        const resp = await fetch(`${API_BASE}/create-invoice`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wallet: account, currency, qty })
+        });
+        if (!resp.ok) {
+          const errorData = await resp.json().catch(() => ({}));
+          throw new Error(errorData.message || `HTTP ${resp.status}: Failed to create invoice`);
+        }
+        const data = await resp.json();
+        if (!data.invoiceId || !data.payToAddress || !data.amount || !data.currency || !data.expiresAt) {
+          throw new Error('Invalid invoice response');
+        }
+
+        const bnbUSD = await fetchBNBPriceUSD();
+        const usdValue = currency === 'BNB' && bnbUSD ? (data.amount * bnbUSD).toFixed(2) : currency === 'USDT' ? data.amount.toFixed(2) : '-';
+        modalQty.innerText = `${qty} TIFFY`;
+        modalCurrency.innerText = currency;
+        modalAmount.innerText = `${data.amount} ${currency}`;
+        modalUSD.innerText = `$${usdValue}`;
+        modalAddress.innerText = data.payToAddress;
+        modalExpires.innerText = `Expires at ${new Date(data.expiresAt).toLocaleString()}`;
+        qrPlaceholder.innerText = data.qr || 'QR';
+        payModal.classList.add('show');
+        payModal.dataset.invoiceId = data.invoiceId;
+        statusSmall.innerText = 'Invoice created';
+      } catch (err) {
+        console.error('Invoice error:', err);
+        statusSmall.innerText = 'Error: Unable to create invoice';
+        alert(`Failed to create invoice: ${err.message || 'Unknown error'}`);
+      } finally {
+        buyBtn.disabled = false;
+      }
+    });
+
+    copyAddr.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(modalAddress.innerText);
+        copyAddr.innerText = 'Copied';
+        setTimeout(() => copyAddr.innerText = 'Copy Address', 1200);
+      } catch {
+        alert('Copy failed');
+      }
+    });
+
+    copyAmount.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(modalAmount.innerText.split(' ')[0]);
+        copyAmount.innerText = 'Copied';
+        setTimeout(() => copyAmount.innerText = 'Copy Amount', 1200);
+      } catch {
+        alert('Copy failed');
+      }
+    });
+
+    cancelBtn.addEventListener('click', () => {
+      payModal.classList.remove('show');
+    });
+
+    proceedBtn.addEventListener('click', async () => {
+      const invoiceId = payModal.dataset.invoiceId;
+      const currency = modalCurrency.innerText;
+      if (currency === 'BNB') {
+        try {
+          proceedBtn.disabled = true;
+          statusSmall.innerText = 'Sending payment...';
+          const amount = modalAmount.innerText.split(' ')[0];
+          const payToAddress = modalAddress.innerText;
+          const tx = await web3.eth.sendTransaction({
+            from: account,
+            to: payToAddress,
+            value: web3.utils.toWei(amount, 'ether')
+          });
+          statusSmall.innerText = 'Payment sent, verifying...';
+          await submitTx(invoiceId, tx.transactionHash);
+        } catch (err) {
+          console.error('Payment error:', err);
+          statusSmall.innerText = 'Payment failed';
+          alert(`Payment failed: ${err.message || 'Unknown error'}`);
+          proceedBtn.disabled = false;
+        }
+      } else {
+        statusSmall.innerText = 'Please send payment manually and wait for confirmation.';
+        pollInvoiceStatus(invoiceId);
+      }
+    });
+
+    async function submitTx(invoiceId, txHash) {
+      try {
+        const resp = await fetch(`${API_BASE}/invoice/${invoiceId}/submit-tx`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ txHash })
+        });
+        if (!resp.ok) {
+          const errorData = await resp.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Submit failed');
+        }
+        pollInvoiceStatus(invoiceId);
+      } catch (err) {
+        console.error('Submit error:', err);
+        alert('Submit failed: ' + err.message);
+        statusSmall.innerText = 'Submit failed';
+      }
     }
 
-    function withdraw(){
-      preConfirmAndSend();
+    let polling = {};
+    function pollInvoiceStatus(invoiceId) {
+      if (polling[invoiceId]) return;
+      let errorCount = 0;
+      const maxErrors = 5;
+      polling[invoiceId] = setInterval(async () => {
+        try {
+          const resp = await fetch(`${API_BASE}/invoice/${invoiceId}`);
+          if (!resp.ok) {
+            const errorData = await resp.json().catch(() => ({}));
+            throw new Error(errorData.message || `HTTP ${resp.status}: Failed to fetch status`);
+          }
+          const data = await resp.json();
+          statusSmall.innerText = `Invoice: ${data.status}`;
+          if (data.status === 'paid') {
+            statusSmall.innerText = 'Payment confirmed, rewarding...';
+            await triggerReward(invoiceId);
+          } else if (data.status === 'rewarded') {
+            clearInterval(polling[invoiceId]);
+            delete polling[invoiceId];
+            payModal.classList.remove('show');
+            alert('Tokens issued! Redirecting...');
+            window.location.href = '/Blue-Key-Claim';
+          } else if (data.status === 'expired' || data.status === 'failed') {
+            clearInterval(polling[invoiceId]);
+            delete polling[invoiceId];
+            payModal.classList.remove('show');
+            alert(`Invoice closed: ${data.status}`);
+          }
+          errorCount = 0;
+        } catch (err) {
+          console.error('Poll error:', err);
+          errorCount++;
+          statusSmall.innerText = `Status check failed (${errorCount}/${maxErrors})`;
+          if (errorCount >= maxErrors) {
+            clearInterval(polling[invoiceId]);
+            delete polling[invoiceId];
+            payModal.classList.remove('show');
+            alert('Stopped checking invoice due to errors.');
+          }
+        }
+      }, 6000);
     }
-  })();
+
+    async function triggerReward(invoiceId) {
+      try {
+        const resp = await fetch(`${API_BASE}/invoice/${invoiceId}/reward`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        if (!resp.ok) {
+          const errorData = await resp.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Reward failed');
+        }
+        const data = await resp.json();
+        if (data.success) {
+          window.location.href = '/Blue-Key-Claim';
+        }
+      } catch (err) {
+        console.error('Reward error:', err);
+        statusSmall.innerText = 'Reward failed, awaiting server confirmation';
+      }
+    }
+
+    window.addEventListener('click', (e) => {
+      if (payModal.classList.contains('show') && !payModal.contains(e.target) && !e.target.closest('#buyBtn')) {
+        payModal.classList.remove('show');
+      }
+    });
   </script>
 </body>
 </html>
